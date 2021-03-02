@@ -11,7 +11,7 @@ export const handler = async () => {
   const now = new Date();
   const lastMinute = subMinutes(now, 1);
   console.log("Querying posts from", lastMinute, "to", now);
-  const Items = await dynamo
+  const items = await dynamo
     .query({
       TableName: "RoamJSSocial",
       IndexName: "primary-index",
@@ -26,5 +26,5 @@ export const handler = async () => {
       },
     })
     .promise();
-  console.log("Found", Items.Count);
+  console.log("Found", items.Count);
 };
