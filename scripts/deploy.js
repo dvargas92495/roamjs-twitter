@@ -21,7 +21,7 @@ Promise.all(
   changedFiles.map((id) =>
     lambda
       .updateFunctionCode({
-        FunctionName: `RoamJS_${id}`,
+        FunctionName: `RoamJS-Social_${id}`,
         Publish: true,
         ZipFile: fs.readFileSync(path.join(out, `${id}.zip`)),
       })
