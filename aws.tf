@@ -33,7 +33,7 @@ module "aws_cron_job" {
   version   = "1.1.0"
   
   rule_name = "RoamJS-Social"
-  schedule  = "cron(* * * * * *)"
+  schedule  = "rate(1 minute)"
   lambdas    = [
     "schedule-social"
   ]
