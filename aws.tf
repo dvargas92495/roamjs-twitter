@@ -33,7 +33,7 @@ module "aws_cron_job" {
   version   = "1.1.0"
   
   rule_name = "RoamJS-Social"
-  schedule  = "cron(* * * * *)"
+  schedule  = "cron(* * * * * *)"
   lambdas    = [
     "schedule-social"
   ]
@@ -76,13 +76,13 @@ provider "github" {
 }
 
 resource "github_actions_secret" "deploy_aws_access_key" {
-  repository       = "generate-roam-site-lambda"
+  repository       = "roamjs-service-social"
   secret_name      = "DEPLOY_AWS_ACCESS_KEY"
   plaintext_value  = var.aws_access_token
 }
 
 resource "github_actions_secret" "deploy_aws_access_secret" {
-  repository       = "generate-roam-site-lambda"
+  repository       = "roamjs-service-social"
   secret_name      = "DEPLOY_AWS_ACCESS_SECRET"
   plaintext_value  = var.aws_secret_token
 }
