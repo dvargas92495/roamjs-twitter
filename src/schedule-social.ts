@@ -15,7 +15,7 @@ export const handler = async () => {
     .query({
       TableName: "RoamJSSocial",
       IndexName: "primary-index",
-      KeyConditionExpression: "date >= :l AND date <= :h",
+      KeyConditionExpression: "#d >= :l AND #d <= :h",
       ExpressionAttributeValues: {
         ":l": {
           S: lastMinute.toJSON(),
@@ -23,6 +23,9 @@ export const handler = async () => {
         ":h": {
           S: now.toJSON(),
         },
+      },
+      ExpressionAttributeNames: {
+        "#d": "date",
       },
     })
     .promise();
