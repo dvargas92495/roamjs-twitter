@@ -48,6 +48,11 @@ resource "aws_dynamodb_table" "social-messages" {
   hash_key       = "uuid"
 
   attribute {
+    name = "uuid"
+    type = "S"
+  }
+
+  attribute {
     name = "date"
     type = "S"
   }
