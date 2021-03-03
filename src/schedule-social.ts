@@ -8,29 +8,46 @@ const credentials = {
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
 };
 const dynamo = new AWS.DynamoDB({ apiVersion: "2012-08-10", credentials });
+const channels = ["twitter"];
 
 export const handler = async () => {
   const now = startOfMinute(new Date());
   const toMinute = addSeconds(now, 30);
   const lastMinute = subMinutes(toMinute, 1);
-  console.log("Querying posts from", lastMinute, "to", now);
-  const items = await dynamo
-    .query({
-      TableName: "RoamJSSocial",
-      IndexName: "primary-index",
-      KeyConditionExpression: "#d BETWEEN :l AND :h",
-      ExpressionAttributeValues: {
-        ":l": {
-          S: lastMinute.toJSON(),
-        },
-        ":h": {
-          S: toMinute.toJSON(),
-        },
-      },
-      ExpressionAttributeNames: {
-        "#d": "date",
-      },
-    })
-    .promise();
-  console.log("Found", items.Count);
+  console.log("Querying posts from", lastMinute, "to", toMinute);
+  const items = Promise.all(
+    channels.map((channel) =>
+      dynamo
+        .query({
+          TableName: "RoamJSSocial",
+          IndexName: "primary-index",
+          KeyConditionExpression: "#c = :c AND #d BETWEEN :l AND :h",
+          ExpressionAttributeValues: {
+            ":l": {
+              S: lastMinute.toJSON(),
+            },
+            ":h": {
+              S: toMinute.toJSON(),
+            },
+            ":c": {
+              S: channel,
+            },
+          },
+          ExpressionAttributeNames: {
+            "#d": "date",
+            "#c": "channel",
+          },
+        })
+        .promise()
+        .then((result) => ({ result, channel }))
+    )
+  ).then((results) =>
+    results
+      .filter(({ result }) => result.Count > 0)
+      .map(({ result, channel }) => ({
+        items: result.Items.map((i) => i.uuid.S),
+        channel,
+      }))
+  );
+  console.log("Found", JSON.stringify(items, null, 4));
 };
