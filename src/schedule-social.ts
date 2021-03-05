@@ -128,7 +128,9 @@ const channelHandler = {
     oauth: string;
     payload: string;
   }): Promise<string> => {
-    const blocks = JSON.parse(payload) as { text: string }[];
+    const { blocks } = JSON.parse(payload) as { blocks: { text: string }[] };
+    const { oauth_token: key, oauth_token_secret: secret } = JSON.parse(oauth);
+
     let in_reply_to_status_id = "";
     let failureIndex = -1;
     const tweets = await Promise.all(
@@ -179,9 +181,6 @@ const channelHandler = {
           .replace(/\(/g, "%28")
           .replace(/\)/g, "%29")
           .replace(/\*/g, "%2A")}`;
-        const { oauth_token: key, oauth_token_secret: secret } = JSON.parse(
-          oauth
-        );
         const oauthHeaders = twitterOAuth.toHeader(
           twitterOAuth.authorize(
             {
