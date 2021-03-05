@@ -246,12 +246,7 @@ export const handler = async () => {
   const now = startOfMinute(new Date());
   const toMinute = addSeconds(now, 30);
   const lastMinute = subMinutes(toMinute, 1);
-  console.log(
-    "Querying posts from",
-    lastMinute.toJSON(),
-    "to",
-    toMinute.toJSON()
-  );
+
   const items = await Promise.all(
     channels.map((channel: keyof typeof channelHandler) =>
       dynamo

@@ -28,6 +28,8 @@ jobs:
         run: |
           echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" >> .env.local
           echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" >> .env.local
+          echo "TWITTER_CONSUMER_KEY=${{ secrets.TWITTER_CONSUMER_KEY }}" >> .env.local
+          echo "TWITTER_CONSUMER_SECRET=${{ secrets.TWITTER_CONSUMER_SECRET }}" >> .env.local
       - name: Build
         run: npm run build
       - name: Deploy

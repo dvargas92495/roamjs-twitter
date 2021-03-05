@@ -22,7 +22,7 @@
   "homepage": "https://github.com/dvargas92495/roamjs-service-social#readme",
   "devDependencies": {
     "@types/uuid": "^8.3.0",
-    "dotenv-webpack": "^6.0.2",
+    "dotenv-webpack": "^6.0.4",
     "prettier": "^2.2.1",
     "ts-loader": "^8.0.17",
     "typescript": "^4.2.2",
