@@ -294,7 +294,6 @@ export const handler = async () => {
         )
     )
   );
-  console.log("Executed:", JSON.stringify(items, null, 4));
   items.forEach(({ uuid, success, message }) =>
     dynamo
       .updateItem({
