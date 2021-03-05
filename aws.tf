@@ -62,10 +62,25 @@ resource "aws_dynamodb_table" "social-messages" {
     type = "S"
   }
 
+  attribute {
+    name = "userId"
+    type = "S"
+  }
+
   global_secondary_index {
     hash_key           = "channel"
     range_key          = "date"
     name               = "primary-index"
+    non_key_attributes = []
+    projection_type    = "ALL"
+    read_capacity      = 0
+    write_capacity     = 0
+  }
+
+  global_secondary_index {
+    hash_key           = "userId"
+    range_key          = "channel"
+    name               = "user-index"
     non_key_attributes = []
     projection_type    = "ALL"
     read_capacity      = 0

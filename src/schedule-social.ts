@@ -25,6 +25,101 @@ const twitterOAuth = new OAuth({
 });
 
 const ATTACHMENT_REGEX = /!\[[^\]]*\]\(([^\s)]*)\)/g;
+/*
+const toCategory = (mime: string) => {
+  if (mime.startsWith("video")) {
+    return "tweet_video";
+  } else if (mime.endsWith("gif")) {
+    return "tweet_gif";
+  } else {
+    return "tweet_image";
+  }
+};
+const uploadAttachments = async ({
+  attachmentUrls,
+  key,
+  secret,
+}: {
+  attachmentUrls: string[];
+  key: string;
+  secret: string;
+}): Promise<string[]> => {
+  if (!attachmentUrls.length) {
+    return Promise.resolve([]);
+  }
+  const mediaIds = [];
+  for (const attachmentUrl of attachmentUrls) {
+    const attachment = await axios
+      .get(attachmentUrl, { responseType: "arraybuffer" })
+      .then((r) => r.data as Blob);
+    const media_category = toCategory(attachment.type);
+    const { media_id, error } = await axios
+      .post(UPLOAD_URL, {
+        key,
+        secret,
+        params: {
+          command: "INIT",
+          total_bytes: attachment.size,
+          media_type: attachment.type,
+          media_category,
+        },
+      })
+      .then((r) => ({ media_id: r.data.media_id_string, error: "" }))
+      .catch((e) => ({ error: e.response.data.error, media_id: "" }));
+    if (error) {
+      return Promise.reject({ roamjsError: error });
+    }
+    const reader = new FileReader();
+    const data = await new Promise<string>((resolve) => {
+      reader.onloadend = () => resolve((reader.result as string).split(",")[1]);
+      reader.readAsDataURL(attachment);
+    });
+    for (let i = 0; i < data.length; i += TWITTER_MAX_SIZE) {
+      await axios.post(UPLOAD_URL, {
+        key,
+        secret,
+        params: {
+          command: "APPEND",
+          media_id,
+          media_data: data.slice(i, i + TWITTER_MAX_SIZE),
+          segment_index: i / TWITTER_MAX_SIZE,
+        },
+      });
+    }
+    await axios.post(UPLOAD_URL, {
+      key,
+      secret,
+      params: { command: "FINALIZE", media_id },
+    });
+
+    if (media_category !== "tweet_image") {
+      await new Promise<void>((resolve, reject) => {
+        const getStatus = () =>
+          axios
+            .post(UPLOAD_URL, {
+              key,
+              secret,
+              params: { command: "STATUS", media_id },
+            })
+            .then((r) => r.data.processing_info)
+            .then(({ state, check_after_secs, error }) => {
+              if (state === "succeeded") {
+                resolve();
+              } else if (state === "failed") {
+                reject(error.message);
+              } else {
+                setTimeout(getStatus, check_after_secs * 1000);
+              }
+            });
+        return getStatus();
+      });
+    }
+
+    mediaIds.push(media_id);
+  }
+  return mediaIds;
+};*/
+
 const channelHandler = {
   twitter: async ({
     oauth,
@@ -32,19 +127,24 @@ const channelHandler = {
   }: {
     oauth: string;
     payload: string;
-  }): Promise<boolean> => {
-    const blocks = JSON.parse(payload);
+  }): Promise<string> => {
+    const blocks = JSON.parse(payload) as { text: string }[];
     let in_reply_to_status_id = "";
-    let overallSuccess = true;
-    for (let index = 0; index < blocks.length; index++) {
-      const { text } = blocks[index] as { text: string };
-
-      const attachmentUrls: string[] = [];
-      const content = text.replace(ATTACHMENT_REGEX, (_, url) => {
-        attachmentUrls.push(url);
-        return "";
-      });
-      /*
+    let failureIndex = -1;
+    const tweets = await Promise.all(
+      blocks.map(({ text }, index) => {
+        if (failureIndex >= 0) {
+          return {
+            success: false,
+            message: `Skipped sending tweet due to failing to send tweet ${failureIndex}`,
+          };
+        }
+        const attachmentUrls: string[] = [];
+        const content = text.replace(ATTACHMENT_REGEX, (_, url) => {
+          attachmentUrls.push(url);
+          return "";
+        });
+        /*
       const media_ids = await uploadAttachments({
         attachmentUrls,
         key,
@@ -65,74 +165,80 @@ const channelHandler = {
         return "";
       }
       */
-      const data = {
-        status: content,
-        // ...(media_ids.length ? { media_ids } : {}),
-        ...(in_reply_to_status_id
-          ? { in_reply_to_status_id, auto_populate_reply_metadata: true }
-          : {}),
-      };
-      const url = `https://api.twitter.com/1.1/statuses/update.json?${querystring
-        .stringify(data)
-        .replace(/!/g, "%21")
-        .replace(/'/g, "%27")
-        .replace(/\(/g, "%28")
-        .replace(/\)/g, "%29")
-        .replace(/\*/g, "%2A")}`;
-      const { oauth_token: key, oauth_token_secret: secret } = JSON.parse(
-        oauth
-      );
-      const oauthHeaders = twitterOAuth.toHeader(
-        twitterOAuth.authorize(
-          {
+        const data = {
+          status: content,
+          // ...(media_ids.length ? { media_ids } : {}),
+          ...(in_reply_to_status_id
+            ? { in_reply_to_status_id, auto_populate_reply_metadata: true }
+            : {}),
+        };
+        const url = `https://api.twitter.com/1.1/statuses/update.json?${querystring
+          .stringify(data)
+          .replace(/!/g, "%21")
+          .replace(/'/g, "%27")
+          .replace(/\(/g, "%28")
+          .replace(/\)/g, "%29")
+          .replace(/\*/g, "%2A")}`;
+        const { oauth_token: key, oauth_token_secret: secret } = JSON.parse(
+          oauth
+        );
+        const oauthHeaders = twitterOAuth.toHeader(
+          twitterOAuth.authorize(
+            {
+              url,
+              method: "POST",
+            },
+            { key, secret }
+          )
+        );
+        return axios
+          .post(
             url,
-            method: "POST",
-          },
-          { key, secret }
-        )
-      );
-      const { success, message } = await axios
-        .post(
-          url,
-          {},
-          {
-            headers: oauthHeaders,
-          }
-        )
-        .then((r) => {
-          const { id_str } = r.data;
-          in_reply_to_status_id = id_str;
-          return { success: true, message: "Successfully posted" };
-        })
-        .catch((e) => ({
-          success: false,
-          message: e.response?.data?.errors
-            ? e.response?.data?.errors
-                .map(({ code }: { code: number }) => {
-                  switch (code) {
-                    case 220:
-                      return "Invalid credentials. Try logging in through the roam/js/twitter page";
-                    case 186:
-                      return "Tweet is too long. Make it shorter!";
-                    case 170:
-                      return "Tweet failed to send because it was empty.";
-                    case 187:
-                      return "Tweet failed to send because Twitter detected it was a duplicate.";
-                    default:
-                      return `Unknown error code (${code}). Email support@roamjs.com for help!`;
-                  }
-                })
-                .join("\n")
-            : e.message,
-        }));
-      console.log(message);
-
-      if (!success) {
-        overallSuccess = false;
-        break;
-      }
-    }
-    return Promise.resolve(overallSuccess);
+            {},
+            {
+              headers: oauthHeaders,
+            }
+          )
+          .then((r) => {
+            const {
+              id_str,
+              user: { screen_name },
+            } = r.data;
+            in_reply_to_status_id = id_str;
+            return {
+              success: true,
+              message: `https://twitter.com/${screen_name}/status/${id_str}`,
+            };
+          })
+          .catch((e) => {
+            failureIndex = index;
+            return {
+              success: false,
+              message: e.response?.data?.errors
+                ? (e.response?.data?.errors as { code: number }[])
+                    .map(({ code }) => {
+                      switch (code) {
+                        case 220:
+                          return "Invalid credentials. Try logging in through the roam/js/twitter page";
+                        case 186:
+                          return "Tweet is too long. Make it shorter!";
+                        case 170:
+                          return "Tweet failed to send because it was empty.";
+                        case 187:
+                          return "Tweet failed to send because Twitter detected it was a duplicate.";
+                        default:
+                          return `Unknown error code (${code}). Email support@roamjs.com for help!`;
+                      }
+                    })
+                    .join("\n")
+                : (e.message as string),
+            };
+          });
+      })
+    );
+    return failureIndex >= 0
+      ? Promise.reject(tweets[failureIndex].message)
+      : Promise.resolve(tweets[0].message);
   },
 };
 const channels = Object.keys(channelHandler);
@@ -182,10 +288,29 @@ export const handler = async () => {
             channelHandler[channel]({
               oauth: i.oauth.S,
               payload: i.payload.S,
-            }).then((success) => ({ uuid: i.uuid.S, success }))
+            })
+              .then((message) => ({ uuid: i.uuid.S, success: true, message }))
+              .catch((message) => ({ uuid: i.uuid.S, success: false, message }))
           )
         )
     )
   );
   console.log("Executed:", JSON.stringify(items, null, 4));
+  items.forEach(({ uuid, success, message }) =>
+    dynamo
+      .updateItem({
+        TableName: "RoamJSSocial",
+        Key: { uuid: { S: uuid } },
+        UpdateExpression: "SET #s = :s, #m = :m",
+        ExpressionAttributeNames: {
+          "#s": "status",
+          "#m": "message",
+        },
+        ExpressionAttributeValues: {
+          ":s": { S: success ? "SUCCESS" : "FAILED" },
+          ":m": { S: message },
+        },
+      })
+      .promise()
+  );
 };
