@@ -6,6 +6,7 @@ import OAuth from "oauth-1.0a";
 import crypto from "crypto";
 import querystring from "querystring";
 import axios from "axios";
+import FormData from "form-data";
 
 const credentials = {
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -25,7 +26,9 @@ const twitterOAuth = new OAuth({
 });
 
 const ATTACHMENT_REGEX = /!\[[^\]]*\]\(([^\s)]*)\)/g;
-/*
+const UPLOAD_URL = "https://upload.twitter.com/1.1/media/upload.json";
+const TWITTER_MAX_SIZE = 5000000;
+
 const toCategory = (mime: string) => {
   if (mime.startsWith("video")) {
     return "tweet_video";
@@ -43,63 +46,78 @@ const uploadAttachments = async ({
   attachmentUrls: string[];
   key: string;
   secret: string;
-}): Promise<string[]> => {
+}): Promise<{media_ids: string[], attachmentsError: string}> => {
   if (!attachmentUrls.length) {
-    return Promise.resolve([]);
+    return Promise.resolve({media_ids: [], attachmentsError: ''});
   }
-  const mediaIds = [];
+  const getPostOpts = (data: FormData) => ({
+    headers: {
+      ...twitterOAuth.toHeader(
+        twitterOAuth.authorize(
+          {
+            url: UPLOAD_URL,
+            method: "POST",
+          },
+          { key, secret }
+        )
+      ),
+      ...data.getHeaders(),
+    },
+  });
+
+  const media_ids = [] as string[];
   for (const attachmentUrl of attachmentUrls) {
     const attachment = await axios
       .get(attachmentUrl, { responseType: "arraybuffer" })
-      .then((r) => r.data as Blob);
+      .then((r) => ({
+        data: r.data as ArrayBuffer,
+        type: r.headers["content-type"],
+        size: parseInt(r.headers["content-length"]),
+      }));
     const media_category = toCategory(attachment.type);
+    const initData = new FormData();
+    initData.append("command", "INIT");
+    initData.append("total_bytes", attachment.size);
+    initData.append("media_type", attachment.type);
+    initData.append("media_category", media_category);
     const { media_id, error } = await axios
-      .post(UPLOAD_URL, {
-        key,
-        secret,
-        params: {
-          command: "INIT",
-          total_bytes: attachment.size,
-          media_type: attachment.type,
-          media_category,
-        },
-      })
+      .post(UPLOAD_URL, initData, getPostOpts(initData))
       .then((r) => ({ media_id: r.data.media_id_string, error: "" }))
       .catch((e) => ({ error: e.response.data.error, media_id: "" }));
     if (error) {
       return Promise.reject({ roamjsError: error });
     }
-    const reader = new FileReader();
-    const data = await new Promise<string>((resolve) => {
-      reader.onloadend = () => resolve((reader.result as string).split(",")[1]);
-      reader.readAsDataURL(attachment);
-    });
+    const data = Buffer.from(attachment.data).toString("binary");
     for (let i = 0; i < data.length; i += TWITTER_MAX_SIZE) {
-      await axios.post(UPLOAD_URL, {
-        key,
-        secret,
-        params: {
-          command: "APPEND",
-          media_id,
-          media_data: data.slice(i, i + TWITTER_MAX_SIZE),
-          segment_index: i / TWITTER_MAX_SIZE,
-        },
-      });
+      const appendData = new FormData();
+      appendData.append("command", "APPEND");
+      appendData.append("media_id", media_id);
+      appendData.append("media_data", data.slice(i, i + TWITTER_MAX_SIZE));
+      appendData.append("segment_index", i / TWITTER_MAX_SIZE);
+      await axios.post(UPLOAD_URL, appendData, getPostOpts(appendData));
     }
-    await axios.post(UPLOAD_URL, {
-      key,
-      secret,
-      params: { command: "FINALIZE", media_id },
-    });
+    const finalizeData = new FormData();
+    finalizeData.append("command", "FINALIZE");
+    finalizeData.append("media_id", media_id);
+    await axios.post(UPLOAD_URL, finalizeData, getPostOpts(finalizeData));
 
     if (media_category !== "tweet_image") {
+      const url = `https://upload.twitter.com/1.1/media/upload.json?${querystring.stringify(
+        { command: "STATUS", media_id }
+      )}`;
       await new Promise<void>((resolve, reject) => {
-        const getStatus = () =>
-          axios
-            .post(UPLOAD_URL, {
-              key,
-              secret,
-              params: { command: "STATUS", media_id },
+        const getStatus = () => {
+          return axios
+            .get(url, {
+              headers: twitterOAuth.toHeader(
+                twitterOAuth.authorize(
+                  {
+                    url,
+                    method: "GET",
+                  },
+                  { key, secret }
+                )
+              ),
             })
             .then((r) => r.data.processing_info)
             .then(({ state, check_after_secs, error }) => {
@@ -111,14 +129,15 @@ const uploadAttachments = async ({
                 setTimeout(getStatus, check_after_secs * 1000);
               }
             });
+        };
         return getStatus();
       });
     }
 
-    mediaIds.push(media_id);
+    media_ids.push(media_id);
   }
-  return mediaIds;
-};*/
+  return { media_ids, attachmentsError: "" };
+};
 
 const channelHandler = {
   twitter: async ({
@@ -134,7 +153,7 @@ const channelHandler = {
     let in_reply_to_status_id = "";
     let failureIndex = -1;
     const tweets = await Promise.all(
-      blocks.map(({ text }, index) => {
+      blocks.map(async ({ text }, index) => {
         if (failureIndex >= 0) {
           return {
             success: false,
@@ -146,30 +165,25 @@ const channelHandler = {
           attachmentUrls.push(url);
           return "";
         });
-        /*
-      const media_ids = await uploadAttachments({
-        attachmentUrls,
-        key,
-        secret,
-      }).catch((e) => {
-        console.error(e.response?.data || e.message || e);
-        setTweetsSent(0);
-        if (e.roamjsError) {
-          setError(e.roamjsError);
-        } else {
-          setError(
-            "Some attachments failed to upload. Email support@roamjs.com for help!"
-          );
+        const { media_ids, attachmentsError } = await uploadAttachments({
+          attachmentUrls,
+          key,
+          secret,
+        }).catch((e) => {
+          console.error(e.response?.data || e.message || e);
+          const attachmentsError =
+            e.roamjsError || "Email support@roamjs.com for help!";
+          return { media_ids: [] as string[], attachmentsError };
+        });
+        if (media_ids.length < attachmentUrls.length) {
+          return {
+            success: false,
+            message: `Some attachments failed to upload. ${attachmentsError}`,
+          };
         }
-        return [];
-      });
-      if (media_ids.length < attachmentUrls.length) {
-        return "";
-      }
-      */
         const data = {
           status: content,
-          // ...(media_ids.length ? { media_ids } : {}),
+          ...(media_ids.length ? { media_ids } : {}),
           ...(in_reply_to_status_id
             ? { in_reply_to_status_id, auto_populate_reply_metadata: true }
             : {}),
