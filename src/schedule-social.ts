@@ -46,9 +46,9 @@ const uploadAttachments = async ({
   attachmentUrls: string[];
   key: string;
   secret: string;
-}): Promise<{media_ids: string[], attachmentsError: string}> => {
+}): Promise<{ media_ids: string[]; attachmentsError: string }> => {
   if (!attachmentUrls.length) {
-    return Promise.resolve({media_ids: [], attachmentsError: ''});
+    return Promise.resolve({ media_ids: [], attachmentsError: "" });
   }
   const getPostOpts = (data: FormData) => ({
     headers: {
@@ -92,7 +92,7 @@ const uploadAttachments = async ({
       const appendData = new FormData();
       appendData.append("command", "APPEND");
       appendData.append("media_id", media_id);
-      appendData.append("media_data", data.slice(i, i + TWITTER_MAX_SIZE));
+      appendData.append("media", data.slice(i, i + TWITTER_MAX_SIZE));
       appendData.append("segment_index", i / TWITTER_MAX_SIZE);
       await axios.post(UPLOAD_URL, appendData, getPostOpts(appendData));
     }
@@ -176,6 +176,7 @@ const channelHandler = {
           return { media_ids: [] as string[], attachmentsError };
         });
         if (media_ids.length < attachmentUrls.length) {
+          failureIndex = index;
           return {
             success: false,
             message: `Some attachments failed to upload. ${attachmentsError}`,
