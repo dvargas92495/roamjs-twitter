@@ -13,6 +13,7 @@ const credentials = {
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
 };
 const dynamo = new AWS.DynamoDB({ apiVersion: "2012-08-10", credentials });
+const ses = new AWS.SES({ apiVersion: "2010-12-01", credentials });
 
 const twitterOAuth = new OAuth({
   consumer: {
@@ -169,8 +170,34 @@ const channelHandler = {
           attachmentUrls,
           key,
           secret,
-        }).catch((e) => {
-          console.error(e.response?.data || e.message || e);
+        }).catch(async (e) => {
+          await ses
+            .sendEmail({
+              Destination: {
+                ToAddresses: ["support@roamjs.com"],
+              },
+              Message: {
+                Body: {
+                  Text: {
+                    Charset: "UTF-8",
+                    Data: `Scheduled Tweet while trying to upload attachments.\n\n${JSON.stringify(
+                      {
+                        message: e.response?.data || e.message || e,
+                        attachmentUrls,
+                      },
+                      null,
+                      4
+                    )}`,
+                  },
+                },
+                Subject: {
+                  Charset: "UTF-8",
+                  Data: `Social - Scheduled Tweet Failed`,
+                },
+              },
+              Source: "support@roamjs.com",
+            })
+            .promise();
           const attachmentsError =
             e.roamjsError || "Email support@roamjs.com for help!";
           return { media_ids: [] as string[], attachmentsError };
