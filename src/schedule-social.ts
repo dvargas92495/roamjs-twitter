@@ -97,13 +97,13 @@ const uploadAttachments = async ({
     if (error) {
       return Promise.reject({ roamjsError: error });
     }
-    
+
     const data = Buffer.from(attachment.data).toString("base64");
     for (let i = 0; i < data.length; i += TWITTER_MAX_SIZE) {
       const appendData = new FormData();
       appendData.append("command", "APPEND");
       appendData.append("media_id", media_id);
-      appendData.append("media", data.slice(i, i + TWITTER_MAX_SIZE));
+      appendData.append("media_data", data.slice(i, i + TWITTER_MAX_SIZE));
       appendData.append("segment_index", i / TWITTER_MAX_SIZE);
       const { success, ...rest } = await axios
         .post(UPLOAD_URL, appendData, getPostOpts(appendData))
@@ -127,6 +127,7 @@ const uploadAttachments = async ({
       .catch((error) => ({
         success: false,
         error,
+        response: error.response?.data,
         command: `FINALIZE`,
         mediaType: attachment.type,
       }));
