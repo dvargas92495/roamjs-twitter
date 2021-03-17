@@ -73,12 +73,13 @@ const uploadAttachments = async ({
       .then((r) => ({
         data: r.data as ArrayBuffer,
         type: r.headers["content-type"],
-        size: parseInt(r.headers["content-length"]),
       }));
+    const data = Buffer.from(attachment.data).toString("base64");
     const media_category = toCategory(attachment.type);
+
     const initData = new FormData();
     initData.append("command", "INIT");
-    initData.append("total_bytes", attachment.size);
+    initData.append("total_bytes", data.length);
     initData.append("media_type", attachment.type);
     initData.append("media_category", media_category);
     const { media_id, error } = await axios
@@ -88,7 +89,6 @@ const uploadAttachments = async ({
     if (error) {
       return Promise.reject({ roamjsError: error });
     }
-    const data = Buffer.from(attachment.data).toString("base64");
     for (let i = 0; i < data.length; i += TWITTER_MAX_SIZE) {
       const appendData = new FormData();
       appendData.append("command", "APPEND");
