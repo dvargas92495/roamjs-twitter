@@ -88,7 +88,7 @@ const uploadAttachments = async ({
     if (error) {
       return Promise.reject({ roamjsError: error });
     }
-    const data = Buffer.from(attachment.data).toString("binary");
+    const data = Buffer.from(attachment.data).toString("base64");
     for (let i = 0; i < data.length; i += TWITTER_MAX_SIZE) {
       const appendData = new FormData();
       appendData.append("command", "APPEND");
