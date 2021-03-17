@@ -73,34 +73,66 @@ const uploadAttachments = async ({
       .then((r) => ({
         data: r.data as ArrayBuffer,
         type: r.headers["content-type"],
+        size: r.headers["content-length"],
       }));
-    const data = Buffer.from(attachment.data).toString("base64");
     const media_category = toCategory(attachment.type);
 
     const initData = new FormData();
     initData.append("command", "INIT");
-    initData.append("total_bytes", data.length);
+    initData.append("total_bytes", attachment.size);
     initData.append("media_type", attachment.type);
     initData.append("media_category", media_category);
     const { media_id, error } = await axios
       .post(UPLOAD_URL, initData, getPostOpts(initData))
-      .then((r) => ({ media_id: r.data.media_id_string, error: "" }))
-      .catch((e) => ({ error: e.response.data.error, media_id: "" }));
+      .then((r) => ({
+        media_id: r.data.media_id_string,
+        error: "",
+      }))
+      .catch((e) => ({
+        error: e.response.data.error,
+        media_id: "",
+        command: "INIT",
+        mediaType: attachment.type,
+      }));
     if (error) {
       return Promise.reject({ roamjsError: error });
     }
+    
+    const data = Buffer.from(attachment.data).toString("base64");
     for (let i = 0; i < data.length; i += TWITTER_MAX_SIZE) {
       const appendData = new FormData();
       appendData.append("command", "APPEND");
       appendData.append("media_id", media_id);
       appendData.append("media", data.slice(i, i + TWITTER_MAX_SIZE));
       appendData.append("segment_index", i / TWITTER_MAX_SIZE);
-      await axios.post(UPLOAD_URL, appendData, getPostOpts(appendData));
+      const { success, ...rest } = await axios
+        .post(UPLOAD_URL, appendData, getPostOpts(appendData))
+        .then(() => ({ success: true }))
+        .catch((error) => ({
+          success: false,
+          error,
+          command: `APPEND${i}`,
+          mediaType: attachment.type,
+        }));
+      if (!success) {
+        return Promise.reject(rest);
+      }
     }
     const finalizeData = new FormData();
     finalizeData.append("command", "FINALIZE");
     finalizeData.append("media_id", media_id);
-    await axios.post(UPLOAD_URL, finalizeData, getPostOpts(finalizeData));
+    const { success, ...rest } = await axios
+      .post(UPLOAD_URL, finalizeData, getPostOpts(finalizeData))
+      .then(() => ({ success: true }))
+      .catch((error) => ({
+        success: false,
+        error,
+        command: `FINALIZE`,
+        mediaType: attachment.type,
+      }));
+    if (!success) {
+      return Promise.reject(rest);
+    }
 
     if (media_category !== "tweet_image") {
       const url = `https://upload.twitter.com/1.1/media/upload.json?${querystring.stringify(
