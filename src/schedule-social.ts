@@ -196,7 +196,9 @@ const channelHandler = {
         }
         const attachmentUrls: string[] = [];
         const content = text.replace(ATTACHMENT_REGEX, (_, url) => {
-          attachmentUrls.push(url);
+          attachmentUrls.push(
+            url.replace("www.dropbox.com", "dl.dropboxusercontent.com")
+          );
           return "";
         });
         const { media_ids, attachmentsError } = await uploadAttachments({

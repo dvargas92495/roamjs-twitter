@@ -1,3 +1,3 @@
-RoamJS Service - Social
+RoamJS Twitter
 
-A RoamJS Service that allows users to schedule social media content to publish at some future point in time.
+A RoamJS Extension that connects your Roam graph to Twitter. Premium subscription allows users to schedule posts to publish at some future point in time.
