@@ -106,25 +106,25 @@ provider "github" {
 }
 
 resource "github_actions_secret" "deploy_aws_access_key" {
-  repository       = "roamjs-service-social"
+  repository       = "roamjs-twitter"
   secret_name      = "DEPLOY_AWS_ACCESS_KEY"
   plaintext_value  = var.aws_access_token
 }
 
 resource "github_actions_secret" "deploy_aws_access_secret" {
-  repository       = "roamjs-service-social"
+  repository       = "roamjs-twitter"
   secret_name      = "DEPLOY_AWS_ACCESS_SECRET"
   plaintext_value  = var.aws_secret_token
 }
 
 resource "github_actions_secret" "twitter_consumer_key" {
-  repository       = "roamjs-service-social"
+  repository       = "roamjs-twitter"
   secret_name      = "TWITTER_CONSUMER_KEY"
   plaintext_value  = var.twitter_consumer_key
 }
 
 resource "github_actions_secret" "twitter_consumer_secret" {
-  repository       = "roamjs-service-social"
+  repository       = "roamjs-twitter"
   secret_name      = "TWITTER_CONSUMER_SECRET"
   plaintext_value  = var.twitter_consumer_secret
 }
