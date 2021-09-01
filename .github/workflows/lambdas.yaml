@@ -1,0 +1,28 @@
+name: Push Lambdas
+on:
+  push:
+    branches: main
+    paths:
+      - "src/*"
+      - "webpack.config.js"
+      - ".github/workflows/lambdas.yaml"
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.DEPLOY_AWS_ACCESS_KEY }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.DEPLOY_AWS_ACCESS_SECRET }}
+  TWITTER_CONSUMER_KEY: ${{ secrets.TWITTER_CONSUMER_KEY }}
+  TWITTER_CONSUMER_SECRET: ${{ secrets.TWITTER_CONSUMER_SECRET }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js 12.16.1
+        uses: actions/setup-node@v1
+        with:
+          node-version: 12.16.1
+      - name: install
+        run: npm install
+      - name: lambdas
+        run: npm run lambdas

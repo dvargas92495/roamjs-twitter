@@ -1,29 +1,29 @@
 {
-  "name": "roamjs-service-social",
+  "name": "roamjs-twitter",
   "version": "1.0.0",
   "description": "Schedule Social Media Posts for a future Date",
   "main": "out/index.js",
   "scripts": {
-    "test": "echo \"No Tests\"",
-    "prebuild": "rm -Rf out",
-    "build": "webpack --config webpack.config.js",
-    "postbuild": "cd out && zip -rq schedule-social.zip ./schedule-social.js",
-    "deploy": "node scripts/deploy.js"
+    "lambdas": "roamjs-scripts lambdas --fast",
+    "build": "roamjs-scripts build",
+    "deploy": "roamjs-scripts deploy",
+    "dev": "roamjs-scripts dev"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dvargas92495/roamjs-service-social.git"
+    "url": "git+https://github.com/dvargas92495/roamjs-twitter.git"
   },
   "author": "dvargas92495 <dvargas92495@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/dvargas92495/roamjs-service-social/issues"
+    "url": "https://github.com/dvargas92495/roamjs-twitter/issues"
   },
-  "homepage": "https://github.com/dvargas92495/roamjs-service-social#readme",
+  "homepage": "https://github.com/dvargas92495/roamjs-twitter#readme",
   "devDependencies": {
     "@types/uuid": "^8.3.0",
     "dotenv-webpack": "^6.0.4",
     "prettier": "^2.2.1",
+    "roamjs-scripts": "^0.11.0",
     "ts-loader": "^8.0.17",
     "typescript": "^4.2.2",
     "webpack": "^5.24.2",
