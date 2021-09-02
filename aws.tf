@@ -30,6 +30,14 @@ variable "twitter_consumer_secret" {
     type = string
 }
 
+variable "developer_token" {
+  type = string
+}
+
+variable "github_token" {
+  type = string
+}
+
 
 provider "aws" {
     region = "us-east-1"
@@ -103,6 +111,7 @@ resource "aws_dynamodb_table" "social-messages" {
 
 provider "github" {
     owner = "dvargas92495"
+    token = var.github_token
 }
 
 resource "github_actions_secret" "deploy_aws_access_key" {
@@ -127,4 +136,16 @@ resource "github_actions_secret" "twitter_consumer_secret" {
   repository       = "roamjs-twitter"
   secret_name      = "TWITTER_CONSUMER_SECRET"
   plaintext_value  = var.twitter_consumer_secret
+}
+
+resource "github_actions_secret" "developer_token" {
+  repository       = "roamjs-twitter"
+  secret_name      = "ROAMJS_DEVELOPER_TOKEN"
+  plaintext_value  = var.developer_token
+}
+
+resource "github_actions_secret" "github_token" {
+  repository       = "roamjs-twitter"
+  secret_name      = "ROAMJS_RELEASE_TOKEN"
+  plaintext_value  = var.github_token
 }
