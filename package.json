@@ -20,6 +20,9 @@
   },
   "homepage": "https://github.com/dvargas92495/roamjs-twitter#readme",
   "devDependencies": {
+    "@types/react": "^17.0.19",
+    "@types/react-dom": "^17.0.9",
+    "@types/twitter-text": "^3.1.1",
     "@types/uuid": "^8.3.0",
     "dotenv-webpack": "^6.0.4",
     "prettier": "^2.2.1",
@@ -35,6 +38,12 @@
     "date-fns": "^2.18.0",
     "form-data": "^4.0.0",
     "oauth-1.0a": "^2.2.6",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-tweet-embed": "^1.2.2",
+    "roam-client": "^1.87.1",
+    "roamjs-components": "^0.24.1",
+    "twitter-text": "^3.1.0",
     "uuid": "^8.3.2"
   }
 }
