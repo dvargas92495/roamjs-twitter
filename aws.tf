@@ -124,7 +124,7 @@ module "roamjs_lambda" {
     },
     {
       path = "twitter-feed",
-      method = "post"
+      method = "get"
     },
     {
       path = "twitter-login",
