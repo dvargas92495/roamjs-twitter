@@ -116,7 +116,7 @@ module "roamjs_lambda" {
     github = github
   }
 
-  name = "service-static-site"
+  name = "twitter"
   lambdas = [
     { 
       path = "twitter-auth", 
