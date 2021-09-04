@@ -4,7 +4,7 @@ import addSeconds from "date-fns/addSeconds";
 import querystring from "querystring";
 import axios from "axios";
 import FormData from "form-data";
-import { twitterOAuth } from "./common/common";
+import { dynamo, ses, twitterOAuth } from "./common/common";
 
 const ATTACHMENT_REGEX = /!\[[^\]]*\]\(([^\s)]*)\)/g;
 const UPLOAD_URL = "https://upload.twitter.com/1.1/media/upload.json";
