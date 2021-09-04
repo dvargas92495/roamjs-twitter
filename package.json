@@ -7,7 +7,9 @@
     "lambdas": "roamjs-scripts lambdas --fast",
     "build": "roamjs-scripts build",
     "deploy": "roamjs-scripts deploy",
-    "dev": "roamjs-scripts dev"
+    "dev": "roamjs-scripts dev",
+    "preserver": "roamjs-scripts lambdas --fast --build",
+    "server": "localhost-lambdas 3005"
   },
   "repository": {
     "type": "git",
@@ -20,13 +22,14 @@
   },
   "homepage": "https://github.com/dvargas92495/roamjs-twitter#readme",
   "devDependencies": {
+    "@types/aws-lambda": "^8.10.83",
     "@types/react": "^17.0.19",
     "@types/react-dom": "^17.0.9",
     "@types/twitter-text": "^3.1.1",
     "@types/uuid": "^8.3.0",
     "dotenv-webpack": "^6.0.4",
     "prettier": "^2.2.1",
-    "roamjs-scripts": "^0.12.1",
+    "roamjs-scripts": "^0.12.2",
     "ts-loader": "^8.0.17",
     "typescript": "^4.2.2",
     "webpack": "^5.24.2",
@@ -37,6 +40,7 @@
     "axios": "^0.21.1",
     "date-fns": "^2.18.0",
     "form-data": "^4.0.0",
+    "localhost-lambdas": "^0.4.1",
     "oauth-1.0a": "^2.2.6",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",

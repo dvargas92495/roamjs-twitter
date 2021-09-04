@@ -1,30 +1,10 @@
 import subMinutes from "date-fns/subMinutes";
-import AWS from "aws-sdk";
 import startOfMinute from "date-fns/startOfMinute";
 import addSeconds from "date-fns/addSeconds";
-import OAuth from "oauth-1.0a";
-import crypto from "crypto";
 import querystring from "querystring";
 import axios from "axios";
 import FormData from "form-data";
-
-const credentials = {
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-};
-const dynamo = new AWS.DynamoDB({ apiVersion: "2012-08-10", credentials });
-const ses = new AWS.SES({ apiVersion: "2010-12-01", credentials });
-
-const twitterOAuth = new OAuth({
-  consumer: {
-    key: process.env.TWITTER_CONSUMER_KEY || "",
-    secret: process.env.TWITTER_CONSUMER_SECRET || "",
-  },
-  signature_method: "HMAC-SHA1",
-  hash_function(base_string, key) {
-    return crypto.createHmac("sha1", key).update(base_string).digest("base64");
-  },
-});
+import { twitterOAuth } from "./common/common";
 
 const ATTACHMENT_REGEX = /!\[[^\]]*\]\(([^\s)]*)\)/g;
 const UPLOAD_URL = "https://upload.twitter.com/1.1/media/upload.json";
