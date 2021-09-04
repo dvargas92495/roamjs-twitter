@@ -109,21 +109,57 @@ resource "aws_dynamodb_table" "social-messages" {
   }
 }
 
+module "roamjs_lambda" {
+  source = "dvargas92495/lambda/roamjs"
+  providers = {
+    aws = aws
+    github = github
+  }
+
+  name = "service-static-site"
+  lambdas = [
+    { 
+      path = "twitter-auth", 
+      method = "post"
+    },
+    {
+      path = "twitter-feed",
+      method = "post"
+    },
+    {
+      path = "twitter-login",
+      method = "post"
+    },
+    {
+      path = "twitter-schedule",
+      method = "get"
+    },
+    {
+      path = "twitter-schedule",
+      method = "post"
+    },
+    {
+      path = "twitter-search",
+      method = "get"
+    },
+    {
+      path = "twitter-tweet",
+      method = "post"
+    },
+    {
+      path = "twitter-upload",
+      method = "post"
+    }
+  ]
+  aws_access_token = var.aws_access_token
+  aws_secret_token = var.aws_secret_token
+  github_token     = var.github_token
+  developer_token  = var.developer_token
+}
+
 provider "github" {
     owner = "dvargas92495"
     token = var.github_token
-}
-
-resource "github_actions_secret" "deploy_aws_access_key" {
-  repository       = "roamjs-twitter"
-  secret_name      = "DEPLOY_AWS_ACCESS_KEY"
-  plaintext_value  = var.aws_access_token
-}
-
-resource "github_actions_secret" "deploy_aws_access_secret" {
-  repository       = "roamjs-twitter"
-  secret_name      = "DEPLOY_AWS_ACCESS_SECRET"
-  plaintext_value  = var.aws_secret_token
 }
 
 resource "github_actions_secret" "twitter_consumer_key" {
@@ -136,16 +172,4 @@ resource "github_actions_secret" "twitter_consumer_secret" {
   repository       = "roamjs-twitter"
   secret_name      = "TWITTER_CONSUMER_SECRET"
   plaintext_value  = var.twitter_consumer_secret
-}
-
-resource "github_actions_secret" "developer_token" {
-  repository       = "roamjs-twitter"
-  secret_name      = "ROAMJS_DEVELOPER_TOKEN"
-  plaintext_value  = var.developer_token
-}
-
-resource "github_actions_secret" "github_token" {
-  repository       = "roamjs-twitter"
-  secret_name      = "ROAMJS_RELEASE_TOKEN"
-  plaintext_value  = var.github_token
 }
