@@ -59,7 +59,7 @@ const twitterReferencesListener = async (
   const pageTitle = getPageTitleByHtmlElement(document.activeElement).textContent;
 
   const twitterSearch = axios.get(
-    `https://12cnhscxfe.execute-api.us-east-1.amazonaws.com/production/twitter-search?username=${username}&query=${encodeURIComponent(
+    `${process.env.API_URL}/twitter-search?username=${username}&query=${encodeURIComponent(
       pageTitle
     )}`
   );
