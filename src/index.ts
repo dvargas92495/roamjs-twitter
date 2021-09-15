@@ -24,6 +24,8 @@ import { render } from "./TweetOverlay";
 import { render as feedRender } from "./TwitterFeed";
 import { createConfigObserver, getRenderRoot } from "roamjs-components";
 import TwitterLogo from "./TwitterLogo.svg";
+import Dashboard from "./ScheduledDashboard";
+import "@blueprintjs/core/lib/css/blueprint.css";
 
 addStyle(`div.roamjs-twitter-count {
   position: relative;
@@ -32,6 +34,21 @@ addStyle(`div.roamjs-twitter-count {
 .roamjs-twitter-feed-embed {
   display: inline-block;
   vertical-align: middle;
+}
+
+.roamjs-datepicker {
+  background: transparent;
+  align-self: center;
+}
+
+textarea:focus {
+  outline: none;
+  outline-offset: 0;
+}
+
+div:focus {
+  outline: none;
+  outline-offset: 0;
 }`);
 
 const TWITTER_REFERENCES_COMMAND = "twitter references";
@@ -56,10 +73,13 @@ const twitterReferencesListener = async (
     return;
   }
 
-  const pageTitle = getPageTitleByHtmlElement(document.activeElement).textContent;
+  const pageTitle = getPageTitleByHtmlElement(document.activeElement)
+    .textContent;
 
   const twitterSearch = axios.get(
-    `${process.env.API_URL}/twitter-search?username=${username}&query=${encodeURIComponent(
+    `${
+      process.env.API_URL
+    }/twitter-search?username=${username}&query=${encodeURIComponent(
       pageTitle
     )}`
   );
@@ -165,6 +185,21 @@ runExtension("twitter", () => {
             },
           ],
         },
+       /* {
+          id: "premium",
+          // premium: true,
+          fields: [
+            {
+              type: "custom",
+              title: "Scheduled Dashboard",
+              description:
+                "View all of your pending and completed scheduled Tweets",
+              options: {
+                component: Dashboard,
+              },
+            },
+          ],
+        },*/
       ],
     },
   });
