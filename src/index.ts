@@ -25,7 +25,6 @@ import { render as feedRender } from "./TwitterFeed";
 import { createConfigObserver, getRenderRoot } from "roamjs-components";
 import TwitterLogo from "./TwitterLogo.svg";
 import Dashboard from "./ScheduledDashboard";
-import "@blueprintjs/core/lib/css/blueprint.css";
 
 addStyle(`div.roamjs-twitter-count {
   position: relative;
