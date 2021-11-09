@@ -49,7 +49,7 @@ export const wrapAxios = (
     }));
 
 export const getRoamJSUser = (event: APIGatewayProxyEvent) =>
-  axios.get(`${process.env.ROAMJS_API_URL}/user`, {
+  axios.get(`https://lambda.roamjs.com/user`, {
     headers: {
       Authorization: process.env.ROAMJS_DEVELOPER_TOKEN,
       "x-roamjs-token":

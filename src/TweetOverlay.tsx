@@ -6,6 +6,7 @@ import {
   Portal,
   Spinner,
   Text,
+  Tooltip,
 } from "@blueprintjs/core";
 import { DatePicker } from "@blueprintjs/datetime";
 import React, {
@@ -26,6 +27,9 @@ import {
   updateBlock,
   getRoamUrlByPage,
   resolveRefs,
+  BLOCK_REF_REGEX,
+  extractRef,
+  openBlockInSidebar,
 } from "roam-client";
 import { useSocialToken } from "./hooks";
 import axios from "axios";
@@ -35,7 +39,11 @@ import endOfYear from "date-fns/endOfYear";
 import format from "date-fns/format";
 import addMinutes from "date-fns/addMinutes";
 import startOfMinute from "date-fns/startOfMinute";
-import { getOauth, getSettingValueFromTree, useOauthAccounts } from "roamjs-components";
+import {
+  getOauth,
+  getSettingValueFromTree,
+  useOauthAccounts,
+} from "roamjs-components";
 
 const ATTACHMENT_REGEX = /!\[[^\]]*\]\(([^\s)]*)\)/g;
 const UPLOAD_URL = `${process.env.API_URL}/twitter-upload`;
@@ -59,6 +67,25 @@ const Error: React.FunctionComponent<{ error: string }> = ({ error }) =>
   ) : (
     <></>
   );
+
+const RoamRef = ({ uid }: { uid: string }) => {
+  return (
+    <span
+      className="rm-block-ref"
+      data-uid={uid}
+      onClick={(e) => {
+        if (e.shiftKey) {
+          openBlockInSidebar(uid);
+          e.preventDefault();
+        } else {
+          window.roamAlphaAPI.ui.mainWindow.openBlock({ block: { uid } });
+        }
+      }}
+    >
+      (({uid}))
+    </span>
+  );
+};
 
 const uploadAttachments = async ({
   attachmentUrls,
@@ -303,7 +330,10 @@ const TwitterContent: React.FunctionComponent<{
       });
       if (appendParent) {
         const text = getTextByBlockUid(blockUid);
-        updateBlock({uid: blockUid, text: `${text}${appendParent.replace(/{link}/g, links[0])}`})
+        updateBlock({
+          uid: blockUid,
+          text: `${text}${appendParent.replace(/{link}/g, links[0])}`,
+        });
       }
       close();
     }
@@ -317,14 +347,12 @@ const TwitterContent: React.FunctionComponent<{
   const [showSchedule, setShowSchedule] = useState(false);
   const [loading, setLoading] = useState(false);
   const [scheduleDate, setScheduleDate] = useState(new Date());
-  const openSchedule = useCallback(
-    () => setShowSchedule(true),
-    [setShowSchedule]
-  );
-  const closeSchedule = useCallback(
-    () => setShowSchedule(false),
-    [setShowSchedule]
-  );
+  const openSchedule = useCallback(() => setShowSchedule(true), [
+    setShowSchedule,
+  ]);
+  const closeSchedule = useCallback(() => setShowSchedule(false), [
+    setShowSchedule,
+  ]);
   const onScheduleClick = useCallback(() => {
     const oauth = getOauth("twitter", accountLabel);
     if (oauth === "{}") {
@@ -461,7 +489,35 @@ const TweetOverlay: React.FunctionComponent<{
   );
   const [counts, setCounts] = useState(calcCounts);
   const blocks = useRef(calcBlocks());
-  const valid = useMemo(() => counts.every(({ valid }) => valid), [counts]);
+  const { valid, validMessage } = useMemo(() => {
+    const empty: string[] = [];
+    const tooLong: string[] = [];
+    const valid = counts.every(({ valid, count, uid }) => {
+      if (!valid) {
+        if (count === 0) empty.push(uid);
+        else tooLong.push(uid);
+      }
+      return valid;
+    });
+    return {
+      valid,
+      validMessage: valid
+        ? ""
+        : `The tweet thread is invalid:\n${
+            empty.length
+              ? `- These tweets are empty: ${empty
+                  .map((s) => `((${s}))`)
+                  .join(", ")}\n`
+              : ""
+          }${
+            tooLong.length
+              ? `- These tweets are too long: ${tooLong
+                  .map((s) => `((${s}))`)
+                  .join(", ")}\n`
+              : ""
+          }`,
+    };
+  }, [counts]);
   const open = useCallback(() => setIsOpen(true), [setIsOpen]);
   const close = useCallback(() => setIsOpen(false), [setIsOpen]);
   const closeDialog = useCallback(() => {
@@ -510,18 +566,41 @@ const TweetOverlay: React.FunctionComponent<{
     <>
       <Popover
         target={
-          <Icon
-            icon={
+          valid ? (
+            <Twitter
+              style={{
+                width: 15,
+                marginLeft: 4,
+                cursor: "pointer",
+              }}
+              onClick={open}
+            />
+          ) : (
+            <Tooltip
+              hoverCloseDelay={5000}
+              content={
+                <span style={{ whiteSpace: "pre" }}>
+                  {validMessage
+                    .split(/(\(\([\w\d-]{9,10}\)\))/g)
+                    .map((e, i) =>
+                      BLOCK_REF_REGEX.test(e) ? (
+                        <RoamRef key={i} uid={extractRef(e)} />
+                      ) : (
+                        <React.Fragment key={i}>{e}</React.Fragment>
+                      )
+                    )}
+                </span>
+              }
+            >
               <Twitter
                 style={{
                   width: 15,
                   marginLeft: 4,
-                  cursor: valid ? "pointer" : "not-allowed",
+                  cursor: "not-allowed",
                 }}
               />
-            }
-            onClick={open}
-          />
+            </Tooltip>
+          )
         }
         content={
           <TwitterContent
