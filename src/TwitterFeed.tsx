@@ -61,13 +61,18 @@ const TweetLabel = ({ id }: { id: string }) => {
 const TwitterFeed = ({
   title,
   format,
+  isToday,
 }: {
   title: string;
   format: string;
+  isToday: boolean;
 }): React.ReactElement => {
   const date = useMemo(() => parseRoamDate(title), [title]);
-  const yesterday = useMemo(() => subDays(date, 1), [date]);
-  const roamDate = useMemo(() => toRoamDate(yesterday), [yesterday]);
+  const dayToQuery = useMemo(() => (isToday ? date : subDays(date, 1)), [
+    date,
+    isToday,
+  ]);
+  const roamDate = useMemo(() => toRoamDate(dayToQuery), [dayToQuery]);
   const [tweets, setTweets] = useState<Tweet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -110,8 +115,8 @@ const TwitterFeed = ({
     axios
       .get<{ tweets: Omit<Tweet, "checked">[] }>(
         `${process.env.API_URL}/twitter-feed?from=${startOfDay(
-          yesterday
-        ).toJSON()}&to=${endOfDay(yesterday).toJSON()}`,
+          dayToQuery
+        ).toJSON()}&to=${endOfDay(dayToQuery).toJSON()}`,
         {
           headers: {
             Authorization: `${key}:${secret}`,
@@ -123,7 +128,7 @@ const TwitterFeed = ({
       })
       .catch((r) => setError(r.response?.data || r.message))
       .finally(() => setLoading(false));
-  }, [setTweets, yesterday, activeAccount]);
+  }, [setTweets, dayToQuery, activeAccount]);
   const onClick = useCallback(() => {
     createBlock({
       parentUid: toRoamDateUid(date),
@@ -221,7 +226,7 @@ const TwitterFeed = ({
 
 export const render = (
   parent: HTMLDivElement,
-  props: { title: string; format: string }
+  props: Parameters<typeof TwitterFeed>[0]
 ): void => ReactDOM.render(<TwitterFeed {...props} />, parent);
 
 export default TwitterFeed;

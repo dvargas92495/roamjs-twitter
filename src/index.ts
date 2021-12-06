@@ -182,6 +182,11 @@ runExtension("twitter", () => {
               description:
                 "The format each tweet will use when imported to the daily note page.",
             },
+            {
+              type: "flag",
+              title: "today",
+              description: "Whether to query tweets liked on the same day of the Daily Note Page instead of the previous day.",
+            }
           ],
         },
        /* {
@@ -243,6 +248,7 @@ runExtension("twitter", () => {
   const feed = getTreeByPageName(CONFIG).find((t) => /feed/i.test(t.text));
   if (feed) {
     const isAnyDay = feed.children.some((t) => /any day/i.test(t.text));
+    const isToday = feed.children.some((t) => /today/i.test(t.text));
     const format =
       feed.children.find((t) => /format/i.test(t.text))?.children?.[0]?.text ||
       "{link}";
@@ -254,7 +260,7 @@ runExtension("twitter", () => {
           parent,
           d.firstElementChild.firstElementChild.nextElementSibling
         );
-        feedRender(parent, { title, format });
+        feedRender(parent, { title, format, isToday });
       }
     };
     if (isAnyDay) {
