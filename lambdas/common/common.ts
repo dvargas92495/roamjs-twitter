@@ -8,7 +8,10 @@ const credentials = {
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
 };
-export const dynamo = new AWS.DynamoDB({ apiVersion: "2012-08-10", credentials });
+export const dynamo = new AWS.DynamoDB({
+  apiVersion: "2012-08-10",
+  credentials,
+});
 export const ses = new AWS.SES({ apiVersion: "2010-12-01", credentials });
 
 export const headers = {
@@ -49,11 +52,17 @@ export const wrapAxios = (
     }));
 
 export const getRoamJSUser = (event: APIGatewayProxyEvent) =>
-  axios.get(`https://lambda.roamjs.com/user`, {
-    headers: {
-      Authorization: process.env.ROAMJS_DEVELOPER_TOKEN,
-      "x-roamjs-token":
-        event.headers.Authorization || event.headers.authorization,
-      "x-roamjs-service": "social",
-    },
-  });
+  axios
+    .get(`https://lambda.roamjs.com/user`, {
+      headers: {
+        Authorization: process.env.ROAMJS_DEVELOPER_TOKEN,
+        "x-roamjs-token":
+          event.headers.Authorization || event.headers.authorization,
+        "x-roamjs-service": "twitter",
+      },
+    })
+    .catch((e) => ({
+      statusCode: 401,
+      body: e.response?.data,
+      headers,
+    }));

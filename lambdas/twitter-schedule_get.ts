@@ -1,8 +1,10 @@
-import { dynamo, getRoamJSUser, headers } from "./common/common";
+import { dynamo } from "./common/common";
 import { APIGatewayProxyHandler } from "aws-lambda";
+import headers from "roamjs-components/backend/headers";
+import { awsGetRoamJSUser } from "roamjs-components/backend/getRoamJSUser";
 
-export const handler: APIGatewayProxyHandler = (event) =>
-  getRoamJSUser(event).then(() =>
+export const handler: APIGatewayProxyHandler =
+  awsGetRoamJSUser((user) =>
     dynamo
       .query({
         TableName: "RoamJSSocial",
@@ -12,7 +14,7 @@ export const handler: APIGatewayProxyHandler = (event) =>
           "#c": "channel",
         },
         ExpressionAttributeValues: {
-          ":u": { S: event.headers.Authorization },
+          ":u": { S: user.email },
           ":c": { S: "twitter" },
         },
         KeyConditionExpression: "#u = :u AND #c = :c",

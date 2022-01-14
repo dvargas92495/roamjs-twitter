@@ -1,30 +1,29 @@
-import {
-  addButtonListener,
-  addStyle,
-  createButtonObserver,
-  createHTMLObserver,
-  createPageTitleObserver,
-  pushBullets,
-  getConfigFromPage,
-  genericError,
-  getParentUidByBlockUid,
-  getUidsFromButton,
-  getTreeByPageName,
-  getUids,
-  toRoamDate,
-  getPageTitleByPageUid,
-  getPageTitleByHtmlElement,
-  parseRoamDateUid,
-  getCurrentPageUid,
-  runExtension,
-  isTagOnPage,
-} from "roam-client";
+import addStyle from "roamjs-components/dom/addStyle";
+import createButtonObserver from "roamjs-components/dom/createButtonObserver";
+import createHTMLObserver from "roamjs-components/dom/createHTMLObserver";
+import createPageTitleObserver from "roamjs-components/dom/createPageTitleObserver";
+import genericError from "roamjs-components/dom/genericError";
+import getParentUidByBlockUid from "roamjs-components/queries/getParentUidByBlockUid";
+import getUidsFromButton from "roamjs-components/dom/getUidsFromButton";
+import getUids from "roamjs-components/dom/getUids";
+import toRoamDate from "roamjs-components/date/toRoamDate";
+import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import getPageTitleByHtmlElement from "roamjs-components/dom/getPageTitleByHtmlElement";
+import parseRoamDateUid from "roamjs-components/date/parseRoamDateUid";
+import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
+import runExtension from "roamjs-components/util/runExtension";
+import isTagOnPage from "roamjs-components/queries/isTagOnPage";
 import axios from "axios";
 import { render } from "./TweetOverlay";
 import { render as feedRender } from "./TwitterFeed";
-import { createConfigObserver, getRenderRoot } from "roamjs-components";
+import { createConfigObserver } from "roamjs-components/components/ConfigPage";
+import updateBlock from "roamjs-components/writes/updateBlock";
+import getRenderRoot from "roamjs-components/util/getRenderRoot";
 import TwitterLogo from "./TwitterLogo.svg";
 import Dashboard from "./ScheduledDashboard";
+import createBlock from "roamjs-components/writes/createBlock";
+import getOrderByBlockUid from "roamjs-components/queries/getOrderByBlockUid";
+import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 
 addStyle(`div.roamjs-twitter-count {
   position: relative;
@@ -50,7 +49,7 @@ div:focus {
   outline-offset: 0;
 }`);
 
-const TWITTER_REFERENCES_COMMAND = "twitter references";
+const TWITTER_REFERENCES_COMMAND = "twitter-references";
 const CONFIG = "roam/js/twitter";
 
 const twitterReferencesListener = async (
@@ -59,26 +58,11 @@ const twitterReferencesListener = async (
   },
   blockUid: string
 ) => {
-  const parentUid = getParentUidByBlockUid(blockUid);
-  const config = getConfigFromPage(CONFIG);
-  const username = config["Username"];
-  if (!username) {
-    window.roamAlphaAPI.updateBlock({
-      block: {
-        string: "Error: Missing required parameter username!",
-        uid: blockUid,
-      },
-    });
-    return;
-  }
-
   const pageTitle = getPageTitleByHtmlElement(document.activeElement)
     .textContent;
 
-  const twitterSearch = axios.get(
-    `${
-      process.env.API_URL
-    }/twitter-search?username=${username}&query=${encodeURIComponent(
+  const twitterSearch = axios.get<{ statuses: { id_str: string }[] }>(
+    `${process.env.API_URL}/twitter-search?query=${encodeURIComponent(
       pageTitle
     )}`
   );
@@ -88,25 +72,35 @@ const twitterReferencesListener = async (
       const statuses = response.data.statuses;
       const count = statuses.length;
       if (count === 0) {
-        window.roamAlphaAPI.updateBlock({
+        return window.roamAlphaAPI.updateBlock({
           block: {
             string: "No tweets found!",
             uid: blockUid,
           },
         });
-        return;
       }
       const bullets = statuses.map(
         (i: { id_str: string }) =>
           `https://twitter.com/i/web/status/${i.id_str}`
       );
-      await pushBullets(bullets, blockUid, parentUid);
+      const order = getOrderByBlockUid(blockUid);
+      const parentUid = getParentUidByBlockUid(blockUid);
+      return Promise.all([
+        updateBlock({ uid: blockUid, text: bullets[0] }),
+        ...bullets.slice(1).map((text, i) =>
+          createBlock({
+            parentUid,
+            order: order + i + 1,
+            node: { text },
+          })
+        ),
+      ]);
     })
     .catch(genericError);
 };
 
-runExtension("twitter", () => {
-  createConfigObserver({
+runExtension("twitter", async () => {
+  const { pageUid } = await createConfigObserver({
     title: CONFIG,
     config: {
       tabs: [
@@ -185,17 +179,19 @@ runExtension("twitter", () => {
             {
               type: "flag",
               title: "today",
-              description: "Whether to query tweets liked on the same day of the Daily Note Page instead of the previous day.",
-            }
+              description:
+                "Whether to query tweets liked on the same day of the Daily Note Page instead of the previous day.",
+            },
           ],
         },
-       /* {
-          id: "premium",
-          // premium: true,
+        {
+          id: "scheduling",
+          toggleable: "dev_price_1IQjUlFHEvC1s7vkDLgkw0DO",
+          development: true,
           fields: [
             {
               type: "custom",
-              title: "Scheduled Dashboard",
+              title: "Dashboard",
               description:
                 "View all of your pending and completed scheduled Tweets",
               options: {
@@ -203,12 +199,18 @@ runExtension("twitter", () => {
               },
             },
           ],
-        },*/
+        },
       ],
     },
   });
 
-  addButtonListener(TWITTER_REFERENCES_COMMAND, twitterReferencesListener);
+  createButtonObserver({
+    attribute: TWITTER_REFERENCES_COMMAND,
+    render: (b) => {
+      b.onclick = () =>
+        twitterReferencesListener({}, getUidsFromButton(b).blockUid);
+    },
+  });
 
   createButtonObserver({
     shortcut: "tweet",
@@ -218,6 +220,7 @@ runExtension("twitter", () => {
       render({
         parent: b.parentElement,
         blockUid,
+        configUid: pageUid,
       });
     },
   });
@@ -240,12 +243,15 @@ runExtension("twitter", () => {
           parent: span,
           blockUid,
           tweetId: tweetMatch?.[2],
+          configUid: pageUid,
         });
       }
     },
   });
 
-  const feed = getTreeByPageName(CONFIG).find((t) => /feed/i.test(t.text));
+  const feed = getBasicTreeByParentUid(pageUid).find((t) =>
+    /feed/i.test(t.text)
+  );
   if (feed) {
     const isAnyDay = feed.children.some((t) => /any day/i.test(t.text));
     const isToday = feed.children.some((t) => /today/i.test(t.text));
@@ -305,7 +311,7 @@ runExtension("twitter", () => {
         const title = getPageTitleByPageUid(getCurrentPageUid());
         const root = getRenderRoot("twitter-feed");
         root.id = root.id.replace(/-root$/, "");
-        feedRender(root, { format, title });
+        feedRender(root, { format, title, isToday });
       },
     });
   }

@@ -9,15 +9,16 @@ import {
 import axios from "axios";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
-import {
-  createBlock,
-  getChildrenLengthByPageUid,
-  getTreeByPageName,
-  parseRoamDate,
-  toRoamDate,
-  toRoamDateUid,
-} from "roam-client";
-import { getOauth, getOauthAccounts, MenuItemSelect } from "roamjs-components";
+import createBlock from "roamjs-components/writes/createBlock";
+import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
+import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
+import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
+import parseRoamDate from "roamjs-components/date/parseRoamDate";
+import toRoamDate from "roamjs-components/date/toRoamDate";
+import toRoamDateUid from "roamjs-components/date/toRoamDateUid";
+import getOauth from "roamjs-components/util/getOauth";
+import getOauthAccounts from "roamjs-components/util/getOauthAccounts";
+import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
 import subDays from "date-fns/subDays";
 import startOfDay from "date-fns/startOfDay";
 import endOfDay from "date-fns/endOfDay";
@@ -32,7 +33,7 @@ type Tweet = {
 };
 
 const getOrder = (parentUid: string) => {
-  const tree = getTreeByPageName("roam/js/twitter");
+  const tree = getBasicTreeByParentUid(getPageUidByPageTitle("roam/js/twitter"));
   const isBottom = tree
     .find((t) => /feed/i.test(t.text))
     ?.children?.some?.((t) => /bottom/i.test(t.text));

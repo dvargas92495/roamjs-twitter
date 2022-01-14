@@ -1,12 +1,14 @@
 import { v4 } from "uuid";
-import { dynamo, getRoamJSUser, headers } from "./common/common";
+import { dynamo } from "./common/common";
 import { APIGatewayProxyHandler } from "aws-lambda";
+import { awsGetRoamJSUser } from "roamjs-components/backend/getRoamJSUser";
+import headers from "roamjs-components/backend/headers";
 
-export const handler: APIGatewayProxyHandler = (event) => {
+export const handler: APIGatewayProxyHandler = (event, c, ca) => {
   const { scheduleDate, oauth, payload } = JSON.parse(event.body || "{}");
   const uuid = v4();
   const date = new Date().toJSON();
-  return getRoamJSUser(event).then(() =>
+  return awsGetRoamJSUser((user) =>
     dynamo
       .putItem({
         TableName: "RoamJSSocial",
@@ -17,7 +19,7 @@ export const handler: APIGatewayProxyHandler = (event) => {
           oauth: { S: oauth },
           payload: { S: payload },
           status: { S: "PENDING" },
-          userId: { S: event.headers.Authorization },
+          userId: { S: user.email },
           channel: { S: "twitter" },
         },
       })
@@ -27,5 +29,5 @@ export const handler: APIGatewayProxyHandler = (event) => {
         body: JSON.stringify({ success: true }),
         headers,
       }))
-  );
+  )(event, c, ca);
 };

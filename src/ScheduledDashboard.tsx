@@ -13,23 +13,19 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import getParentUidByBlockUid from 'roamjs-components/queries/getParentUidByBlockUid';
+import getBasicTreeByParentUid from 'roamjs-components/queries/getBasicTreeByParentUid';
+import openBlockInSidebar from 'roamjs-components/writes/openBlockInSidebar';
+import resolveRefs from 'roamjs-components/dom/resolveRefs';
+import getTextByBlockUid from 'roamjs-components/queries/getTextByBlockUid';
 import {
-  getParentUidByBlockUid,
-  getTreeByBlockUid,
-  openBlockInSidebar,
-  resolveRefs,
   TreeNode,
-} from "roam-client";
+} from "roamjs-components/types";
 import {
-  SERVICE_TOKEN_STAGE,
-  ServiceDashboard,
-  StageContent,
-  useAuthenticatedDelete,
-  useAuthenticatedGet,
-  useAuthenticatedPut,
-  useServicePageUid,
-  WrapServiceMainStage,
-} from "roamjs-components";
+  useAuthenticatedAxiosDelete as useAuthenticatedDelete,
+  useAuthenticatedAxiosGet as useAuthenticatedGet,
+  useAuthenticatedAxiosPut as useAuthenticatedPut,
+} from "roamjs-components/components/ServiceComponents";
 import startOfMinute from "date-fns/startOfMinute";
 import addMinutes from "date-fns/addMinutes";
 import endOfYear from "date-fns/endOfYear";
@@ -113,7 +109,8 @@ const EditScheduledContent = ({
   const close = useCallback(() => setIsOpen(false), [setIsOpen]);
   const payload = useMemo(() => {
     const parentUid = getParentUidByBlockUid(blockUid);
-    const { text, children } = getTreeByBlockUid(parentUid);
+    const text = getTextByBlockUid(parentUid);
+    const children = getBasicTreeByParentUid(parentUid);
     const blocks = children
       .map((t) => ({
         ...t,

@@ -18,20 +18,20 @@ import React, {
 } from "react";
 import ReactDOM from "react-dom";
 import Twitter from "./TwitterLogo.svg";
-import {
-  getEditTimeByBlockUid,
-  getTextByBlockUid,
-  getTreeByBlockUid,
-  getTreeByPageName,
-  getUids,
-  updateBlock,
-  getRoamUrlByPage,
-  resolveRefs,
-  BLOCK_REF_REGEX,
-  extractRef,
-  openBlockInSidebar,
-} from "roam-client";
-import { useSocialToken } from "./hooks";
+import getEditTimeByBlockUid from "roamjs-components/queries/getEditTimeByBlockUid";
+import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
+import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
+import getUids from "roamjs-components/dom/getUids";
+import updateBlock from "roamjs-components/writes/updateBlock";
+import getRoamUrlByPage from "roamjs-components/dom/getRoamUrlByPage";
+import resolveRefs from "roamjs-components/dom/resolveRefs";
+import { BLOCK_REF_REGEX } from "roamjs-components/dom/constants";
+import extractRef from "roamjs-components/util/extractRef";
+import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
+import getOauth from "roamjs-components/util/getOauth";
+import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
+import { useOauthAccounts } from "roamjs-components/components/OauthSelect";
+import getToken from "roamjs-components/util/getToken";
 import axios from "axios";
 import twitter from "twitter-text";
 import addYears from "date-fns/addYears";
@@ -39,11 +39,6 @@ import endOfYear from "date-fns/endOfYear";
 import format from "date-fns/format";
 import addMinutes from "date-fns/addMinutes";
 import startOfMinute from "date-fns/startOfMinute";
-import {
-  getOauth,
-  getSettingValueFromTree,
-  useOauthAccounts,
-} from "roamjs-components";
 
 const ATTACHMENT_REGEX = /!\[[^\]]*\]\(([^\s)]*)\)/g;
 const UPLOAD_URL = `${process.env.API_URL}/twitter-upload`;
@@ -174,13 +169,14 @@ const uploadAttachments = async ({
 
 const TwitterContent: React.FunctionComponent<{
   blockUid: string;
+  configUid: string;
   tweetId?: string;
   close: () => void;
   setDialogMessage: (m: string) => void;
-}> = ({ close, blockUid, tweetId, setDialogMessage }) => {
+}> = ({ close, blockUid, tweetId, setDialogMessage, configUid }) => {
   const message = useMemo(
     () =>
-      getTreeByBlockUid(blockUid).children.map((t) => ({
+      getBasicTreeByParentUid(blockUid).map((t) => ({
         ...t,
         text: resolveRefs(t.text),
       })),
@@ -199,7 +195,7 @@ const TwitterContent: React.FunctionComponent<{
       return;
     }
     const { oauth_token: key, oauth_token_secret: secret } = JSON.parse(oauth);
-    const tree = getTreeByPageName("roam/js/twitter");
+    const tree = getBasicTreeByParentUid(configUid);
     const sentBlockUid = getSettingValueFromTree({
       tree,
       key: "sent",
@@ -343,7 +339,7 @@ const TwitterContent: React.FunctionComponent<{
     () => addMinutes(startOfMinute(new Date()), 1),
     []
   );
-  const socialToken = useSocialToken();
+  const socialToken = getToken();
   const [showSchedule, setShowSchedule] = useState(false);
   const [loading, setLoading] = useState(false);
   const [scheduleDate, setScheduleDate] = useState(new Date());
@@ -454,16 +450,17 @@ const TwitterContent: React.FunctionComponent<{
 
 const TweetOverlay: React.FunctionComponent<{
   blockUid: string;
+  configUid: string;
   tweetId?: string;
   childrenRef?: HTMLDivElement;
   unmount: () => void;
-}> = ({ childrenRef, blockUid, unmount, tweetId }) => {
+}> = ({ childrenRef, blockUid, unmount, tweetId, configUid }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [dialogMessage, setDialogMessage] = useState("");
   const rootRef = useRef(null);
   const calcCounts = useCallback(
     () =>
-      getTreeByBlockUid(blockUid).children.map((t) => {
+      getBasicTreeByParentUid(blockUid).map((t) => {
         const { weightedLength, valid } = twitter.parseTweet(
           resolveRefs(t.text).replace(ATTACHMENT_REGEX, "")
         );
@@ -604,6 +601,7 @@ const TweetOverlay: React.FunctionComponent<{
         }
         content={
           <TwitterContent
+            configUid={configUid}
             blockUid={blockUid}
             tweetId={tweetId}
             close={close}
@@ -654,9 +652,11 @@ export const render = ({
   parent,
   blockUid,
   tweetId,
+  configUid,
 }: {
   parent: HTMLSpanElement;
   blockUid: string;
+  configUid: string;
   tweetId?: string;
 }): void => {
   const childrenRef = parent.closest(".rm-block-main")
@@ -668,6 +668,7 @@ export const render = ({
   }
   ReactDOM.render(
     <TweetOverlay
+    configUid={configUid}
       blockUid={blockUid}
       tweetId={tweetId}
       childrenRef={childrenRef}
