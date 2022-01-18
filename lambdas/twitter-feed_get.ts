@@ -5,7 +5,9 @@ import isBefore from "date-fns/isBefore";
 import { headers, twitterOAuth } from "./common/common";
 
 export const handler: APIGatewayProxyHandler = async (event) => {
-  const [key, secret] = event.headers.Authorization.split(":");
+  const [key, secret] = (
+    event.headers.Authorization || event.headers.authorization
+  ).split(":");
   const { to, from } = event.queryStringParameters;
   const toDate = new Date(to);
   const fromDate = new Date(from);

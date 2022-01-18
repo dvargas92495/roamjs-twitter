@@ -31,7 +31,7 @@ import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
 import getOauth from "roamjs-components/util/getOauth";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import { useOauthAccounts } from "roamjs-components/components/OauthSelect";
-import getToken from "roamjs-components/util/getToken";
+import apiPost from "roamjs-components/util/apiPost";
 import axios from "axios";
 import twitter from "twitter-text";
 import addYears from "date-fns/addYears";
@@ -39,6 +39,7 @@ import endOfYear from "date-fns/endOfYear";
 import format from "date-fns/format";
 import addMinutes from "date-fns/addMinutes";
 import startOfMinute from "date-fns/startOfMinute";
+import { toFlexRegex } from "roamjs-components";
 
 const ATTACHMENT_REGEX = /!\[[^\]]*\]\(([^\s)]*)\)/g;
 const UPLOAD_URL = `${process.env.API_URL}/twitter-upload`;
@@ -339,7 +340,13 @@ const TwitterContent: React.FunctionComponent<{
     () => addMinutes(startOfMinute(new Date()), 1),
     []
   );
-  const socialToken = getToken();
+  const schedulingEnabled = useMemo(
+    () =>
+      getBasicTreeByParentUid(configUid).some((t) =>
+        toFlexRegex("scheduling").test(t.text)
+      ),
+    [configUid]
+  );
   const [showSchedule, setShowSchedule] = useState(false);
   const [loading, setLoading] = useState(false);
   const [scheduleDate, setScheduleDate] = useState(new Date());
@@ -358,16 +365,11 @@ const TwitterContent: React.FunctionComponent<{
       return;
     }
     setLoading(true);
-    axios
-      .post(
-        `${process.env.API_URL}/twitter-schedule`,
-        {
-          scheduleDate: scheduleDate.toJSON(),
-          payload: JSON.stringify({ blocks: message, tweetId }),
-          oauth,
-        },
-        { headers: { Authorization: socialToken } }
-      )
+    apiPost("twitter-schedule", {
+      scheduleDate: scheduleDate.toJSON(),
+      payload: JSON.stringify({ blocks: message, tweetId }),
+      oauth,
+    })
       .then(() => {
         setLoading(false);
         setDialogMessage(
@@ -388,11 +390,11 @@ const TwitterContent: React.FunctionComponent<{
     close,
     setLoading,
     scheduleDate,
-    socialToken,
     setDialogMessage,
     message,
     tweetId,
     accountLabel,
+    apiPost,
   ]);
   return (
     <div style={{ padding: 16, maxWidth: 400 }}>
@@ -433,15 +435,46 @@ const TwitterContent: React.FunctionComponent<{
             </div>
           )}
           <Error error={error} />
-          {!!socialToken && (
-            <div style={{ marginTop: 16 }}>
+          <div style={{ marginTop: 16 }}>
+            {schedulingEnabled ? (
               <Button
                 text={tweetId ? "Schedule Reply" : "Schedule Tweet"}
                 onClick={openSchedule}
                 id={"roamjs-schedule-tweet-button"}
               />
-            </div>
-          )}
+            ) : (
+              <Tooltip
+                content={'The scheduling feature is under development and will soon be available!'
+                  /*<span>
+                    To enable the Scheduling feature, head to your
+                    <a
+                      onClick={() =>
+                        window.roamAlphaAPI.ui.mainWindow.openPage({
+                          page: { title: "roam/js/twitter" },
+                        })
+                      }
+                    >
+                      <span className="rm-page-ref__brackets">[[</span>
+                      <span
+                        tabIndex={-1}
+                        className="rm-page-ref rm-page-ref--link"
+                      >
+                        roam/js/twitter
+                      </span>
+                      <span className="rm-page-ref__brackets">]]</span>
+                    </a>{" "}
+                    page!
+                      </span>*/
+                }
+              >
+                <Button
+                  text={tweetId ? "Schedule Reply" : "Schedule Tweet"}
+                  id={"roamjs-schedule-tweet-button"}
+                  disabled={true}
+                />
+              </Tooltip>
+            )}
+          </div>
         </>
       )}
     </div>
@@ -556,7 +589,9 @@ const TweetOverlay: React.FunctionComponent<{
     }
   });
   const aOnClick = useCallback(() => {
-    window.location.assign(getRoamUrlByPage("roam/js/social"));
+    window.roamAlphaAPI.ui.mainWindow.openPage({
+      page: { title: "roam/js/twitter" },
+    });
     closeDialog();
   }, [closeDialog]);
   return (
@@ -637,7 +672,7 @@ const TweetOverlay: React.FunctionComponent<{
           <a onClick={aOnClick}>
             <span className="rm-page-ref__brackets">[[</span>
             <span tabIndex={-1} className="rm-page-ref rm-page-ref--link">
-              roam/js/social
+              roam/js/twitter
             </span>
             <span className="rm-page-ref__brackets">]]</span>
           </a>{" "}
@@ -668,7 +703,7 @@ export const render = ({
   }
   ReactDOM.render(
     <TweetOverlay
-    configUid={configUid}
+      configUid={configUid}
       blockUid={blockUid}
       tweetId={tweetId}
       childrenRef={childrenRef}

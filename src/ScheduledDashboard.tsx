@@ -21,11 +21,9 @@ import getTextByBlockUid from 'roamjs-components/queries/getTextByBlockUid';
 import {
   TreeNode,
 } from "roamjs-components/types";
-import {
-  useAuthenticatedAxiosDelete as useAuthenticatedDelete,
-  useAuthenticatedAxiosGet as useAuthenticatedGet,
-  useAuthenticatedAxiosPut as useAuthenticatedPut,
-} from "roamjs-components/components/ServiceComponents";
+import apiDelete from "roamjs-components/util/apiDelete"; 
+import apiGet from "roamjs-components/util/apiGet"; 
+import apiPut from "roamjs-components/util/apiPut"; 
 import startOfMinute from "date-fns/startOfMinute";
 import addMinutes from "date-fns/addMinutes";
 import endOfYear from "date-fns/endOfYear";
@@ -97,7 +95,6 @@ const EditScheduledContent = ({
   date: Date;
   blockUid: string;
 }) => {
-  const authenticatedAxiosPut = useAuthenticatedPut();
   const initialDate = useMemo(
     () => addMinutes(startOfMinute(new Date()), 1),
     []
@@ -125,7 +122,7 @@ const EditScheduledContent = ({
   const onClick = useCallback(() => {
     setLoading(true);
     const date = scheduleDate.toJSON();
-    authenticatedAxiosPut("social-schedule", {
+    apiPut("social-schedule", {
       uuid,
       scheduleDate: date,
       payload,
@@ -135,7 +132,7 @@ const EditScheduledContent = ({
         close();
       })
       .catch(() => setLoading(false));
-  }, [uuid, scheduleDate, payload, authenticatedAxiosPut, onConfirm, close]);
+  }, [uuid, scheduleDate, payload, onConfirm, close]);
   return (
     <>
       <Button
@@ -187,15 +184,13 @@ const EditScheduledContent = ({
 };
 
 const ScheduledDashboard = () => {
-  const authenticatedAxiosGet = useAuthenticatedGet();
-  const authenticatedAxiosDelete = useAuthenticatedDelete();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [valid, setValid] = useState(false);
   const [scheduledTweets, setScheduledTweets] = useState<ScheduledTweet[]>([]);
   const refresh = useCallback(() => {
     setLoading(true);
-    authenticatedAxiosGet("twitter-schedule")
+    apiGet("twitter-schedule")
       .then((r) => {
         setValid(true);
         setScheduledTweets(
@@ -207,7 +202,7 @@ const ScheduledDashboard = () => {
       })
       .catch((e)=> setError(e.response?.data && e.message))
       .finally(() => setLoading(false));
-  }, [setLoading, setValid, authenticatedAxiosGet]);
+  }, [setLoading, setValid]);
   useEffect(() => {
     if (loading) {
       refresh();
@@ -225,7 +220,6 @@ const ScheduledDashboard = () => {
           <thead>
             <tr>
               <th></th>
-              <th>Channel</th>
               <th>Block</th>
               <th>Created Date</th>
               <th>Scheduled Date</th>
@@ -262,7 +256,7 @@ const ScheduledDashboard = () => {
                       )}
                       <DeleteScheduledContent
                         onConfirm={() =>
-                          authenticatedAxiosDelete(
+                          apiDelete(
                             `social-schedule?uuid=${uuid}`
                           ).then(() =>
                             setScheduledTweets(
@@ -272,7 +266,6 @@ const ScheduledDashboard = () => {
                         }
                       />
                     </td>
-                    <td>Twitter</td>
                     <td>
                       <span
                         className="rm-block-ref"
