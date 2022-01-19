@@ -219,7 +219,7 @@ const TwitterContent: React.FunctionComponent<{
       window.roamAlphaAPI.createBlock({
         location: { "parent-uid": sentBlockUid, order: 0 },
         block: {
-          string: sentLabel.replace("{now}", new Date().toLocaleString()),
+          string: sentLabel.replace(/{now}/g, new Date().toLocaleString()),
           uid: sourceUid,
         },
       });
@@ -329,7 +329,9 @@ const TwitterContent: React.FunctionComponent<{
         const text = getTextByBlockUid(blockUid);
         updateBlock({
           uid: blockUid,
-          text: `${text}${appendParent.replace(/{link}/g, links[0])}`,
+          text: `${text}${appendParent
+            .replace(/{link}/g, links[0])
+            .replace(/{now}/g, new Date().toLocaleString())}`,
         });
       }
       close();
@@ -412,12 +414,15 @@ const TwitterContent: React.FunctionComponent<{
               className={"roamjs-datepicker"}
               timePickerProps={{ useAmPm: true, showArrowButtons: true }}
             />
-            <Button
-              text={"Schedule"}
-              onClick={onScheduleClick}
-              id={"roamjs-send-schedule-button"}
-            />
-            {loading && <Spinner size={Spinner.SIZE_SMALL} />}
+            <div>
+              <Button
+                text={"Schedule"}
+                onClick={onScheduleClick}
+                id={"roamjs-send-schedule-button"}
+                style={{marginRight: 16}}
+              />
+              {loading && <Spinner size={Spinner.SIZE_SMALL} />}
+            </div>
             <Error error={error} />
           </div>
         </>
@@ -444,7 +449,8 @@ const TwitterContent: React.FunctionComponent<{
               />
             ) : (
               <Tooltip
-                content={'The scheduling feature is under development and will soon be available!'
+                content={
+                  "The scheduling feature is under development and will soon be available!"
                   /*<span>
                     To enable the Scheduling feature, head to your
                     <a

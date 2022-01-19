@@ -39,7 +39,7 @@ type PendingTweet = {
   status: "PENDING";
 };
 
-type ScheduledTweet = {
+export type ScheduledTweet = {
   uuid: string;
   blockUid: string;
   createdDate: string;

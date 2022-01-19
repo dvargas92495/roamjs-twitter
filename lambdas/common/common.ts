@@ -13,6 +13,7 @@ export const dynamo = new AWS.DynamoDB({
   credentials,
 });
 export const ses = new AWS.SES({ apiVersion: "2010-12-01", credentials });
+export const s3 = new AWS.S3({ credentials });
 
 export const headers = {
   "Access-Control-Allow-Origin": "https://roamresearch.com",
