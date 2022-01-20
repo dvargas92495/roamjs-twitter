@@ -36,7 +36,7 @@ export const handler: APIGatewayProxyHandler = (event, c, ca) => {
       )
       .then(() => ({
         statusCode: 200,
-        body: JSON.stringify({ success: true }),
+        body: JSON.stringify({ id: uuid }),
         headers,
       }))
   )(event, c, ca);

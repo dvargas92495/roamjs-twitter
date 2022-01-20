@@ -39,7 +39,12 @@ import endOfYear from "date-fns/endOfYear";
 import format from "date-fns/format";
 import addMinutes from "date-fns/addMinutes";
 import startOfMinute from "date-fns/startOfMinute";
-import { toFlexRegex } from "roamjs-components";
+import {
+  apiGet,
+  getFirstChildUidByBlockUid,
+  toFlexRegex,
+} from "roamjs-components";
+import differenceInMilliseconds from "date-fns/differenceInMilliseconds";
 
 const ATTACHMENT_REGEX = /!\[[^\]]*\]\(([^\s)]*)\)/g;
 const UPLOAD_URL = `${process.env.API_URL}/twitter-upload`;
@@ -168,13 +173,12 @@ const uploadAttachments = async ({
   return mediaIds;
 };
 
-const TwitterContent: React.FunctionComponent<{
-  blockUid: string;
-  configUid: string;
-  tweetId?: string;
-  close: () => void;
-  setDialogMessage: (m: string) => void;
-}> = ({ close, blockUid, tweetId, setDialogMessage, configUid }) => {
+const TwitterContent: React.FunctionComponent<
+  Props & {
+    close: () => void;
+    setDialogMessage: (m: string) => void;
+  }
+> = ({ close, blockUid, tweetId, setDialogMessage, configUid, markInfo }) => {
   const message = useMemo(
     () =>
       getBasicTreeByParentUid(blockUid).map((t) => ({
@@ -372,7 +376,7 @@ const TwitterContent: React.FunctionComponent<{
       payload: JSON.stringify({ blocks: message, tweetId }),
       oauth,
     })
-      .then(() => {
+      .then((r) => {
         setLoading(false);
         setDialogMessage(
           `Tweet Successfully Scheduled to post at ${format(
@@ -380,6 +384,21 @@ const TwitterContent: React.FunctionComponent<{
             "yyyy/MM/dd hh:mm:ss a"
           )}!`
         );
+        if (markInfo) {
+          const indexUid = message[0].uid;
+          markInfo.pendingBlockUids.add(indexUid);
+          setTimeout(
+            () =>
+              apiGet(`twitter-schedule?id=${r.data.id}`)
+                .then((r) => {
+                  if (r.data.status === "SUCCESS")
+                    markInfo.successBlockUids.add(indexUid);
+                  else markInfo.failedBlockUids.add(indexUid);
+                })
+                .catch((e) => console.error(e)),
+            differenceInMilliseconds(scheduleDate, new Date()) + 60000
+          );
+        }
       })
       .catch((e) => {
         setError(e.response?.data);
@@ -419,7 +438,7 @@ const TwitterContent: React.FunctionComponent<{
                 text={"Schedule"}
                 onClick={onScheduleClick}
                 id={"roamjs-send-schedule-button"}
-                style={{marginRight: 16}}
+                style={{ marginRight: 16 }}
               />
               {loading && <Spinner size={Spinner.SIZE_SMALL} />}
             </div>
@@ -487,13 +506,27 @@ const TwitterContent: React.FunctionComponent<{
   );
 };
 
-const TweetOverlay: React.FunctionComponent<{
+type Props = {
   blockUid: string;
   configUid: string;
   tweetId?: string;
-  childrenRef?: HTMLDivElement;
-  unmount: () => void;
-}> = ({ childrenRef, blockUid, unmount, tweetId, configUid }) => {
+  markInfo?: {
+    pendingBlockUids: Set<string>;
+    successBlockUids: Set<string>;
+    failedBlockUids: Set<string>;
+  };
+};
+
+const TweetOverlay: React.FunctionComponent<
+  {
+    childrenRef?: HTMLDivElement;
+    unmount: () => void;
+  } & Props
+> = ({ childrenRef, unmount, ...props }) => {
+  const { tweetId, configUid, markInfo, blockUid } = props;
+  const indexUid = useMemo(() => getFirstChildUidByBlockUid(blockUid), [
+    blockUid,
+  ]);
   const [isOpen, setIsOpen] = useState(false);
   const [dialogMessage, setDialogMessage] = useState("");
   const rootRef = useRef(null);
@@ -600,19 +633,36 @@ const TweetOverlay: React.FunctionComponent<{
     });
     closeDialog();
   }, [closeDialog]);
+  const markIcon = useMemo(
+    () =>
+      markInfo
+        ? markInfo.successBlockUids.has(indexUid)
+          ? "confirm"
+          : markInfo.pendingBlockUids.has(indexUid)
+          ? "time"
+          : markInfo.failedBlockUids.has(indexUid)
+          ? "cross"
+          : null
+        : null,
+    [markInfo, indexUid]
+  );
   return (
     <>
       <Popover
         target={
           valid ? (
-            <Twitter
-              style={{
-                width: 15,
-                marginLeft: 4,
-                cursor: "pointer",
-              }}
-              onClick={open}
-            />
+            <>
+              <Twitter
+                style={{
+                  width: 15,
+                  marginLeft: 4,
+                  cursor: markIcon ? "not-allowed" : "pointer",
+                  opacity: markIcon ? 0.75 : 1.0,
+                }}
+                onClick={markIcon ? () => {} : open}
+              />
+              {markIcon && <Icon icon={markIcon} />}
+            </>
           ) : (
             <Tooltip
               hoverCloseDelay={5000}
@@ -635,6 +685,7 @@ const TweetOverlay: React.FunctionComponent<{
                   width: 15,
                   marginLeft: 4,
                   cursor: "not-allowed",
+                  opacity: 0.75,
                 }}
               />
             </Tooltip>
@@ -642,9 +693,7 @@ const TweetOverlay: React.FunctionComponent<{
         }
         content={
           <TwitterContent
-            configUid={configUid}
-            blockUid={blockUid}
-            tweetId={tweetId}
+            {...props}
             close={close}
             setDialogMessage={setDialogMessage}
           />
@@ -691,15 +740,10 @@ const TweetOverlay: React.FunctionComponent<{
 
 export const render = ({
   parent,
-  blockUid,
-  tweetId,
-  configUid,
+  ...props
 }: {
   parent: HTMLSpanElement;
-  blockUid: string;
-  configUid: string;
-  tweetId?: string;
-}): void => {
+} & Props): void => {
   const childrenRef = parent.closest(".rm-block-main")
     ?.nextElementSibling as HTMLDivElement;
   if (childrenRef) {
@@ -709,9 +753,7 @@ export const render = ({
   }
   ReactDOM.render(
     <TweetOverlay
-      configUid={configUid}
-      blockUid={blockUid}
-      tweetId={tweetId}
+      {...props}
       childrenRef={childrenRef}
       unmount={() => ReactDOM.unmountComponentAtNode(parent)}
     />,

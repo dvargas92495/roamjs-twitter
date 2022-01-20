@@ -205,7 +205,7 @@ runExtension("twitter", async () => {
               type: "flag",
               title: "Mark Blocks",
               description:
-                "Whether to mark blocks in your graph with an icon that shows they are already scheduled",
+                "Whether to mark blocks in your graph with an icon that shows they are already scheduled. Requires refreshing to take effect.",
             },
           ],
         },
@@ -221,44 +221,73 @@ runExtension("twitter", async () => {
     },
   });
 
-  createButtonObserver({
-    shortcut: "tweet",
-    attribute: "write-tweet",
-    render: (b: HTMLButtonElement) => {
-      const { blockUid } = getUidsFromButton(b);
-      render({
-        parent: b.parentElement,
-        blockUid,
-        configUid: pageUid,
-      });
-    },
-  });
-
-  createHTMLObserver({
-    className: "twitter-tweet",
-    tag: "DIV",
-    callback: (d: HTMLDivElement) => {
-      if (!d.hasAttribute("data-roamjs-twitter-reply")) {
-        d.setAttribute("data-roamjs-twitter-reply", "true");
-        const block = d.closest(".roam-block") as HTMLDivElement;
-        const sub = block.getElementsByTagName("sub")[0];
-        const tweetMatch = /\/([a-zA-Z0-9_]{1,15})\/status\/([0-9]*)\??/.exec(
-          sub?.innerText
-        );
-        const { blockUid } = getUids(block);
-        const span = document.createElement("span");
-        d.appendChild(span);
-        render({
-          parent: span,
-          blockUid,
-          tweetId: tweetMatch?.[2],
-          configUid: pageUid,
-        });
-      }
-    },
-  });
-
   const configTree = getBasicTreeByParentUid(pageUid);
+  const scheduling = getSubTree({ tree: configTree, key: "scheduling" });
+  const mark = getSubTree({ tree: scheduling.children, key: "Mark Blocks" });
+  (mark.uid
+    ? apiGet("twitter-schedule")
+        .then((r) => {
+          const scheduledTweets = r.data.scheduledTweets as ScheduledTweet[];
+          const pendingBlockUids = new Set(
+            scheduledTweets
+              .filter((s) => s.status === "PENDING")
+              .map((s) => s.blockUid)
+          );
+          const successBlockUids = new Set(
+            scheduledTweets
+              .filter((s) => s.status === "SUCCESS")
+              .map((s) => s.blockUid)
+          );
+          const failedBlockUids = new Set(
+            scheduledTweets
+              .filter((s) => s.status === "FAILED")
+              .map((s) => s.blockUid)
+          );
+          return { pendingBlockUids, successBlockUids, failedBlockUids };
+        })
+        .catch((e) => console.error(e.response?.data && e.message))
+    : Promise.resolve(undefined)
+  ).then((markInfo) => {
+    createButtonObserver({
+      shortcut: "tweet",
+      attribute: "write-tweet",
+      render: (b: HTMLButtonElement) => {
+        const { blockUid } = getUidsFromButton(b);
+        render({
+          parent: b.parentElement,
+          blockUid,
+          configUid: pageUid,
+          markInfo,
+        });
+      },
+    });
+
+    createHTMLObserver({
+      className: "twitter-tweet",
+      tag: "DIV",
+      callback: (d: HTMLDivElement) => {
+        if (!d.hasAttribute("data-roamjs-twitter-reply")) {
+          d.setAttribute("data-roamjs-twitter-reply", "true");
+          const block = d.closest(".roam-block") as HTMLDivElement;
+          const sub = block.getElementsByTagName("sub")[0];
+          const tweetMatch = /\/([a-zA-Z0-9_]{1,15})\/status\/([0-9]*)\??/.exec(
+            sub?.innerText
+          );
+          const { blockUid } = getUids(block);
+          const span = document.createElement("span");
+          d.appendChild(span);
+          render({
+            parent: span,
+            blockUid,
+            tweetId: tweetMatch?.[2],
+            configUid: pageUid,
+            markInfo,
+          });
+        }
+      },
+    });
+  });
+
   const feed = getSubTree({ tree: configTree, key: "feed" });
   if (feed.uid) {
     const isAnyDay = feed.children.some((t) => /any day/i.test(t.text));
@@ -322,41 +351,5 @@ runExtension("twitter", async () => {
         feedRender(root, { format, title, isToday });
       },
     });
-  }
-  const scheduling = getSubTree({ tree: configTree, key: "scheduling" });
-  if (scheduling) {
-    const mark = getSubTree({ tree: scheduling.children, key: "Mark Blocks" });
-    if (mark) {
-      apiGet("twitter-schedule")
-        .then((r) => {
-          const scheduledTweets = r.data.scheduledTweets as ScheduledTweet[];
-          const pendingBlockUids = new Set(
-            scheduledTweets
-              .filter((s) => s.status === "PENDING")
-              .map((s) => s.blockUid)
-          );
-          const successBlockUids = new Set(
-            scheduledTweets
-              .filter((s) => s.status === "SUCCESS")
-              .map((s) => s.blockUid)
-          );
-          const failedBlockUids = new Set(
-            scheduledTweets
-              .filter((s) => s.status === "FAILED")
-              .map((s) => s.blockUid)
-          );
-          createBlockObserver((b) => {
-            const { blockUid } = getUids(b);
-            if (pendingBlockUids.has(blockUid)) {
-              console.log("display pending icon");
-            } else if (successBlockUids.has(blockUid)) {
-              console.log("display success icon");
-            } else if (failedBlockUids.has(blockUid)) {
-              console.log("display failed icon");
-            }
-          });
-        })
-        .catch((e) => console.error(e.response?.data && e.message));
-    }
   }
 });
