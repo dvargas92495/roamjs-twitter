@@ -260,7 +260,7 @@ runExtension("twitter", async () => {
 
   const configTree = getBasicTreeByParentUid(pageUid);
   const feed = getSubTree({ tree: configTree, key: "feed" });
-  if (feed) {
+  if (feed.uid) {
     const isAnyDay = feed.children.some((t) => /any day/i.test(t.text));
     const isToday = feed.children.some((t) => /today/i.test(t.text));
     const format =
