@@ -5,6 +5,7 @@ import querystring from "querystring";
 import axios from "axios";
 import FormData from "form-data";
 import { dynamo, ses, twitterOAuth, s3 } from "./common/common";
+import meterRoamJSUser from "roamjs-components/backend/meterRoamJSUser";
 
 const ATTACHMENT_REGEX = /!\[[^\]]*\]\(([^\s)]*)\)/g;
 const UPLOAD_URL = "https://upload.twitter.com/1.1/media/upload.json";
@@ -348,32 +349,45 @@ export const handler = async () => {
             oauth: i.oauth.S,
             uuid: i.uuid.S,
           })
-            .then((message) => ({ uuid: i.uuid.S, success: true, message }))
+            .then((message) => ({
+              uuid: i.uuid.S,
+              success: true,
+              message,
+              email: i.userId.S,
+            }))
             .catch((message) => ({
               uuid: i.uuid.S,
               success: false,
+              email: i.userId.S,
               message,
             }))
         )
       )
     )
     .then((items) =>
-      items.forEach(({ uuid, success, message }) =>
-        dynamo
-          .updateItem({
-            TableName: "RoamJSSocial",
-            Key: { uuid: { S: uuid } },
-            UpdateExpression: "SET #s = :s, #m = :m",
-            ExpressionAttributeNames: {
-              "#s": "status",
-              "#m": "message",
-            },
-            ExpressionAttributeValues: {
-              ":s": { S: success ? "SUCCESS" : "FAILED" },
-              ":m": { S: message },
-            },
-          })
-          .promise()
+      items.forEach(({ uuid, success, message, email }) =>
+        (success
+          ? meterRoamJSUser(email).catch(() => ({ id: "FAILED" }))
+          : Promise.resolve({ id: "FAILED" })
+        ).then(({ id }) =>
+          dynamo
+            .updateItem({
+              TableName: "RoamJSSocial",
+              Key: { uuid: { S: uuid } },
+              UpdateExpression: "SET #s = :s, #m = :m, #u = :u",
+              ExpressionAttributeNames: {
+                "#s": "status",
+                "#m": "message",
+                "#u": "stripe",
+              },
+              ExpressionAttributeValues: {
+                ":s": { S: success ? "SUCCESS" : "FAILED" },
+                ":m": { S: message },
+                ":u": { S: id },
+              },
+            })
+            .promise()
+        )
       )
     );
 };

@@ -2,7 +2,8 @@ import { APIGatewayProxyHandler } from "aws-lambda";
 import axios from "axios";
 import isAfter from "date-fns/isAfter";
 import isBefore from "date-fns/isBefore";
-import { headers, twitterOAuth } from "./common/common";
+import { twitterOAuth } from "./common/common";
+import headers from "roamjs-components/backend/headers";
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   const [key, secret] = (

@@ -26,7 +26,6 @@ import getOrderByBlockUid from "roamjs-components/queries/getOrderByBlockUid";
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import apiGet from "roamjs-components/util/apiGet";
 import getSubTree from "roamjs-components/util/getSubTree";
-import createBlockObserver from "roamjs-components/dom/createBlockObserver";
 
 addStyle(`div.roamjs-twitter-count {
   position: relative;
@@ -189,7 +188,7 @@ runExtension("twitter", async () => {
         },
         {
           id: "scheduling",
-          toggleable: "dev_price_1IQjUlFHEvC1s7vkDLgkw0DO",
+          toggleable: "price_1KKRYwFHEvC1s7vktaU46KYq",
           development: true,
           fields: [
             {

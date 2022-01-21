@@ -1,6 +1,28 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import axios from "axios";
-import { wrapAxios, userError } from "./common/common";
+import type { AxiosPromise } from "axios";
+import headers from "roamjs-components/backend/headers";
+
+export const userError = (body: string): APIGatewayProxyResult => ({
+  statusCode: 400,
+  body,
+  headers,
+});
+
+export const wrapAxios = (
+  req: AxiosPromise<Record<string, unknown>>
+): Promise<APIGatewayProxyResult> =>
+  req
+    .then((r) => ({
+      statusCode: 200,
+      body: JSON.stringify(r.data),
+      headers,
+    }))
+    .catch((e) => ({
+      statusCode: e.response?.status || 500,
+      body: e.response?.data ? JSON.stringify(e.response.data) : e.message,
+      headers,
+    }));
 
 export const handler = async (
   event: APIGatewayProxyEvent
