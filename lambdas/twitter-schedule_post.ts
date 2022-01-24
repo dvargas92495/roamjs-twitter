@@ -20,7 +20,12 @@ export const handler: APIGatewayProxyHandler = (event, c, ca) => {
           blockUid: { S: JSON.parse(payload).blocks?.[0]?.uid },
           status: { S: "PENDING" },
           userId: { S: user.email },
-          channel: { S: "twitter" },
+          channel: {
+            S:
+              process.env.NODE_ENV === "development"
+                ? "development"
+                : "twitter",
+          },
         },
       })
       .promise()

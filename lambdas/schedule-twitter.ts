@@ -333,7 +333,7 @@ export const handler = async () => {
           S: toMinute.toJSON(),
         },
         ":c": {
-          S: "twitter",
+          S: process.env.NODE_ENV === "development" ? "development" : "twitter",
         },
       },
       ExpressionAttributeNames: {
@@ -367,7 +367,11 @@ export const handler = async () => {
     .then((items) =>
       items.forEach(({ uuid, success, message, email }) =>
         (success
-          ? meterRoamJSUser(email).catch(() => ({ id: "FAILED" }))
+          ? meterRoamJSUser(email).catch((e) => {
+              console.error("Failed to meter usage to stripe");
+              console.error(e);
+              return { id: "FAILED" };
+            })
           : Promise.resolve({ id: "FAILED" })
         ).then(({ id }) =>
           dynamo

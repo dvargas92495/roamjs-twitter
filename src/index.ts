@@ -188,8 +188,7 @@ runExtension("twitter", async () => {
         },
         {
           id: "scheduling",
-          toggleable: "price_1KKRYwFHEvC1s7vktaU46KYq",
-          development: true,
+          toggleable: "price_1KLX2LFHEvC1s7vkPbaD8WUo",
           fields: [
             {
               type: "custom",

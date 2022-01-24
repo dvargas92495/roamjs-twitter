@@ -37,7 +37,12 @@ export const handler: APIGatewayProxyHandler = (event, c, ca) => {
             },
             ExpressionAttributeValues: {
               ":u": { S: user.email },
-              ":c": { S: "twitter" },
+              ":c": {
+                S:
+                  process.env.NODE_ENV === "development"
+                    ? "development"
+                    : "twitter",
+              },
             },
             KeyConditionExpression: "#u = :u AND #c = :c",
           })
