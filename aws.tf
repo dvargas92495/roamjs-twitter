@@ -149,7 +149,15 @@ module "roamjs_lambda" {
     {
       path = "twitter-upload",
       method = "post"
-    }
+    },
+    {
+      path = "twitter-schedule",
+      method = "put"
+    },
+    {
+      path = "twitter-schedule",
+      method = "delete"
+    },
   ]
   aws_access_token = var.aws_access_token
   aws_secret_token = var.aws_secret_token
