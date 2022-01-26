@@ -122,7 +122,7 @@ const EditScheduledContent = ({
   const onClick = useCallback(() => {
     setLoading(true);
     const date = scheduleDate.toJSON();
-    apiPut("social-schedule", {
+    apiPut("twitter-schedule", {
       uuid,
       scheduleDate: date,
       payload,
@@ -257,7 +257,7 @@ const ScheduledDashboard = () => {
                       <DeleteScheduledContent
                         onConfirm={() =>
                           apiDelete(
-                            `social-schedule?uuid=${uuid}`
+                            `twitter-schedule?uuid=${uuid}`
                           ).then(() =>
                             setScheduledTweets(
                               scheduledTweets.filter((t) => t.uuid !== uuid)
