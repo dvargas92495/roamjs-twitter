@@ -3,7 +3,7 @@ on:
   push:
     branches: main
     paths:
-      - "lambdas/*"
+      - "lambdas/**"
       - "package.json"
       - ".github/workflows/lambdas.yaml"
 

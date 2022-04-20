@@ -39,11 +39,9 @@ import endOfYear from "date-fns/endOfYear";
 import format from "date-fns/format";
 import addMinutes from "date-fns/addMinutes";
 import startOfMinute from "date-fns/startOfMinute";
-import {
-  apiGet,
-  getFirstChildUidByBlockUid,
-  toFlexRegex,
-} from "roamjs-components";
+import apiGet from "roamjs-components/util/apiGet";
+import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
+import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import differenceInMilliseconds from "date-fns/differenceInMilliseconds";
 
 const ATTACHMENT_REGEX = /!\[[^\]]*\]\(([^\s)]*)\)/g;
