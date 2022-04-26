@@ -26,4 +26,4 @@ jobs:
           source: build
           path: twitter
           release_token: ${{ secrets.ROAMJS_RELEASE_TOKEN }}
-          email: dvargas92495@gmail.com
+          email: support@roamjs.com
