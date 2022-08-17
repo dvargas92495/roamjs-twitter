@@ -47,7 +47,6 @@ provider "aws" {
 
 module "aws_cron_job" {
   source    = "dvargas92495/cron-job/aws"
-  version   = "1.1.0"
   
   rule_name = "RoamJS"
   schedule  = "rate(1 minute)"
