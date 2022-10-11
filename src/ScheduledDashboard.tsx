@@ -7,28 +7,24 @@ import {
   Spinner,
 } from "@blueprintjs/core";
 import format from "date-fns/format";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import getParentUidByBlockUid from 'roamjs-components/queries/getParentUidByBlockUid';
-import getBasicTreeByParentUid from 'roamjs-components/queries/getBasicTreeByParentUid';
-import openBlockInSidebar from 'roamjs-components/writes/openBlockInSidebar';
-import resolveRefs from 'roamjs-components/dom/resolveRefs';
-import getTextByBlockUid from 'roamjs-components/queries/getTextByBlockUid';
-import {
-  TreeNode,
-} from "roamjs-components/types";
-import apiDelete from "roamjs-components/util/apiDelete"; 
-import apiGet from "roamjs-components/util/apiGet"; 
-import apiPut from "roamjs-components/util/apiPut"; 
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import getParentUidByBlockUid from "roamjs-components/queries/getParentUidByBlockUid";
+import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
+import openBlockInSidebar from "roamjs-components/writes/openBlockInSidebar";
+import resolveRefs from "roamjs-components/dom/resolveRefs";
+import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
+import type { OnloadArgs, TreeNode } from "roamjs-components/types";
+import apiDelete from "roamjs-components/util/apiDelete";
+import apiGet from "roamjs-components/util/apiGet";
+import apiPut from "roamjs-components/util/apiPut";
 import startOfMinute from "date-fns/startOfMinute";
 import addMinutes from "date-fns/addMinutes";
 import endOfYear from "date-fns/endOfYear";
 import addYears from "date-fns/addYears";
 import { DatePicker } from "@blueprintjs/datetime";
+import renderOverlay, {
+  RoamOverlayProps,
+} from "roamjs-components/util/renderOverlay";
 
 type AttemptedTweet = {
   status: "FAILED" | "SUCCESS";
@@ -183,24 +179,24 @@ const EditScheduledContent = ({
   );
 };
 
-const ScheduledDashboard = () => {
+const ScheduledDashboard = ({ isOpen, onClose }: RoamOverlayProps) => {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [valid, setValid] = useState(false);
   const [scheduledTweets, setScheduledTweets] = useState<ScheduledTweet[]>([]);
   const refresh = useCallback(() => {
     setLoading(true);
-    apiGet("twitter-schedule")
+    apiGet<{ scheduledTweets: ScheduledTweet[] }>("twitter-schedule")
       .then((r) => {
         setValid(true);
         setScheduledTweets(
-          (r.data.scheduledTweets as ScheduledTweet[]).sort(
+          r.scheduledTweets.sort(
             ({ createdDate: a }, { createdDate: b }) =>
               new Date(b).valueOf() - new Date(a).valueOf()
           )
         );
       })
-      .catch((e)=> setError(e.response?.data && e.message))
+      .catch((e) => setError(e.response?.data && e.message))
       .finally(() => setLoading(false));
   }, [setLoading, setValid]);
   useEffect(() => {
@@ -208,150 +204,220 @@ const ScheduledDashboard = () => {
       refresh();
     }
   }, [loading, refresh]);
-  return loading ? (
-    <Spinner />
-  ) : valid ? (
-    <>
-      {scheduledTweets.length ? (
-        <table
-          className="bp3-html-table bp3-html-table-bordered bp3-html-table-striped"
-          style={{ border: "1px solid rgba(16,22,26,0.15)" }}
-        >
-          <thead>
-            <tr>
-              <th></th>
-              <th>Block</th>
-              <th>Created Date</th>
-              <th>Scheduled Date</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {scheduledTweets.map(
-              ({
-                uuid,
-                blockUid,
-                scheduledDate,
-                createdDate,
-                ...statusProps
-              }) => {
-                return (
-                  <tr key={uuid}>
-                    <td>
-                      {statusProps.status === "PENDING" && (
-                        <EditScheduledContent
-                          uuid={uuid}
-                          date={new Date(scheduledDate)}
-                          blockUid={blockUid}
-                          onConfirm={({ date }) =>
-                            setScheduledTweets(
-                              scheduledTweets.map((t) =>
-                                t.uuid === uuid
-                                  ? { ...t, scheduledDate: date }
-                                  : t
-                              )
-                            )
-                          }
-                        />
-                      )}
-                      <DeleteScheduledContent
-                        onConfirm={() =>
-                          apiDelete(
-                            `twitter-schedule?uuid=${uuid}`
-                          ).then(() =>
-                            setScheduledTweets(
-                              scheduledTweets.filter((t) => t.uuid !== uuid)
-                            )
-                          )
-                        }
-                      />
-                    </td>
-                    <td>
-                      <span
-                        className="rm-block-ref"
-                        onClick={() => openBlockInSidebar(blockUid)}
-                      >
-                        <span>(({blockUid}))</span>
-                      </span>
-                    </td>
-                    <td>
-                      {format(new Date(createdDate), "yyyy/MM/dd hh:mm a")}
-                    </td>
-                    <td>
-                      {format(new Date(scheduledDate), "yyyy/MM/dd hh:mm a")}
-                    </td>
-                    <td>
-                      {statusProps.status === "SUCCESS" && (
-                        <a
-                          href={statusProps.message}
-                          target="_blank"
-                          rel="noopener"
-                          style={{ color: "darkgreen" }}
-                        >
-                          SUCCESS
-                        </a>
-                      )}
-                      {statusProps.status === "PENDING" && (
-                        <span style={{ color: "darkgoldenrod" }}>PENDING</span>
-                      )}
-                      {statusProps.status === "FAILED" && (
-                        <Popover
-                          content={
-                            <span
-                              style={{
-                                color: "darkred",
-                                cursor: "pointer",
-                              }}
-                            >
-                              <div style={{ padding: 16 }}>
-                                {statusProps.message}
-                              </div>
-                            </span>
-                          }
-                          target={
-                            <span
-                              style={{
-                                color: "darkred",
-                                cursor: "pointer",
-                              }}
-                            >
-                              FAILED
-                            </span>
-                          }
-                        />
-                      )}
-                    </td>
-                  </tr>
-                );
-              }
-            )}
-          </tbody>
-        </table>
-      ) : (
+  return (
+    <Dialog
+      isOpen={isOpen}
+      onClose={onClose}
+      title={"Scheduled Tweets"}
+      enforceFocus={false}
+      autoFocus={false}
+    >
+      {loading ? (
+        <Spinner />
+      ) : valid ? (
         <>
-          <div style={{ color: "darkgoldenrod", margin: "16px 0" }}>
-            You have not scheduled any Tweets from Roam. Create a block with <code>{`{{[[tweet]]}}`}</code> to get started!
-          </div>
+          {scheduledTweets.length ? (
+            <table
+              className="bp3-html-table bp3-html-table-bordered bp3-html-table-striped"
+              style={{ border: "1px solid rgba(16,22,26,0.15)" }}
+            >
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Block</th>
+                  <th>Created Date</th>
+                  <th>Scheduled Date</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scheduledTweets.map(
+                  ({
+                    uuid,
+                    blockUid,
+                    scheduledDate,
+                    createdDate,
+                    ...statusProps
+                  }) => {
+                    return (
+                      <tr key={uuid}>
+                        <td>
+                          {statusProps.status === "PENDING" && (
+                            <EditScheduledContent
+                              uuid={uuid}
+                              date={new Date(scheduledDate)}
+                              blockUid={blockUid}
+                              onConfirm={({ date }) =>
+                                setScheduledTweets(
+                                  scheduledTweets.map((t) =>
+                                    t.uuid === uuid
+                                      ? { ...t, scheduledDate: date }
+                                      : t
+                                  )
+                                )
+                              }
+                            />
+                          )}
+                          <DeleteScheduledContent
+                            onConfirm={() =>
+                              apiDelete(
+                                `twitter-schedule?uuid=${uuid}`
+                              ).then(() =>
+                                setScheduledTweets(
+                                  scheduledTweets.filter((t) => t.uuid !== uuid)
+                                )
+                              )
+                            }
+                          />
+                        </td>
+                        <td>
+                          <span
+                            className="rm-block-ref"
+                            onClick={() => openBlockInSidebar(blockUid)}
+                          >
+                            <span>(({blockUid}))</span>
+                          </span>
+                        </td>
+                        <td>
+                          {format(new Date(createdDate), "yyyy/MM/dd hh:mm a")}
+                        </td>
+                        <td>
+                          {format(
+                            new Date(scheduledDate),
+                            "yyyy/MM/dd hh:mm a"
+                          )}
+                        </td>
+                        <td>
+                          {statusProps.status === "SUCCESS" && (
+                            <a
+                              href={statusProps.message}
+                              target="_blank"
+                              rel="noopener"
+                              style={{ color: "darkgreen" }}
+                            >
+                              SUCCESS
+                            </a>
+                          )}
+                          {statusProps.status === "PENDING" && (
+                            <span style={{ color: "darkgoldenrod" }}>
+                              PENDING
+                            </span>
+                          )}
+                          {statusProps.status === "FAILED" && (
+                            <Popover
+                              content={
+                                <span
+                                  style={{
+                                    color: "darkred",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  <div style={{ padding: 16 }}>
+                                    {statusProps.message}
+                                  </div>
+                                </span>
+                              }
+                              target={
+                                <span
+                                  style={{
+                                    color: "darkred",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  FAILED
+                                </span>
+                              }
+                            />
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  }
+                )}
+              </tbody>
+            </table>
+          ) : (
+            <>
+              <div style={{ color: "darkgoldenrod", margin: "16px 0" }}>
+                You have not scheduled any Tweets from Roam. Create a block with{" "}
+                <code>{`{{[[tweet]]}}`}</code> to get started!
+              </div>
+            </>
+          )}
+          <Button
+            minimal
+            icon={"refresh"}
+            onClick={refresh}
+            id={"roamjs-social-refresh-button"}
+            style={{ position: "absolute", top: 8, right: 8 }}
+          />
         </>
+      ) : (
+        <div style={{ color: "darkred" }}>
+          <h4>RoamJS Token is invalid.</h4>
+          <p>{error}</p>
+          <p>
+            If you are sure this token is correct, please reach out to
+            support@roamjs.com for help!
+          </p>
+        </div>
       )}
-      <Button
-        minimal
-        icon={"refresh"}
-        onClick={refresh}
-        id={"roamjs-social-refresh-button"}
-        style={{ position: "absolute", top: 8, right: 8 }}
-      />
-    </>
-  ) : (
-    <div style={{ color: "darkred" }}>
-      <h4>RoamJS Token is invalid.</h4>
-      <p>{error}</p>
-      <p>
-        If you are sure this token is correct, please reach out to
-        support@roamjs.com for help!
-      </p>
-    </div>
+    </Dialog>
   );
 };
 
-export default ScheduledDashboard;
+const loadTwitterScheduling = (args: OnloadArgs) => {
+  const unloads = new Set<() => void>();
+  return (enabled: boolean) => {
+    if (enabled) {
+      const mark = args.extensionAPI.settings.get("mark-blocks");
+      (mark
+        ? apiGet<{ scheduledTweets: ScheduledTweet[] }>("twitter-schedule")
+            .then((r) => {
+              const scheduledTweets = r.scheduledTweets;
+              const pendingBlockUids = new Set(
+                scheduledTweets
+                  .filter((s) => s.status === "PENDING")
+                  .map((s) => s.blockUid)
+              );
+              const successBlockUids = new Set(
+                scheduledTweets
+                  .filter((s) => s.status === "SUCCESS")
+                  .map((s) => s.blockUid)
+              );
+              const failedBlockUids = new Set(
+                scheduledTweets
+                  .filter((s) => s.status === "FAILED")
+                  .map((s) => s.blockUid)
+              );
+              return { pendingBlockUids, successBlockUids, failedBlockUids };
+            })
+            .catch((e) => console.error(e.response?.data && e.message))
+        : Promise.resolve(undefined)
+      ).then((markInfo) => {
+        document.body.dispatchEvent(
+          new CustomEvent(`roamjs:twitter:mark`, { detail: markInfo })
+        );
+      });
+      window.roamAlphaAPI.ui.commandPalette.addCommand({
+        label: "Open Scheduled Tweets",
+        callback: () => {
+          renderOverlay({
+            id: "scheduled-tweets",
+            Overlay: ScheduledDashboard,
+          });
+        },
+      });
+      unloads.add(() =>
+        window.roamAlphaAPI.ui.commandPalette.removeCommand({
+          label: "Open Scheduled Tweets",
+        })
+      );
+    } else {
+      unloads.clear();
+      unloads.forEach((u) => u());
+    }
+  };
+};
+
+export default loadTwitterScheduling;

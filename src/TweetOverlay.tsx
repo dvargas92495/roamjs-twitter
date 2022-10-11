@@ -2,6 +2,7 @@ import {
   Alert,
   Button,
   Icon,
+  IconName,
   Popover,
   Portal,
   Spinner,
@@ -43,6 +44,7 @@ import apiGet from "roamjs-components/util/apiGet";
 import getFirstChildUidByBlockUid from "roamjs-components/queries/getFirstChildUidByBlockUid";
 import toFlexRegex from "roamjs-components/util/toFlexRegex";
 import differenceInMilliseconds from "date-fns/differenceInMilliseconds";
+import { OnloadArgs } from "roamjs-components/types";
 
 const ATTACHMENT_REGEX = /!\[[^\]]*\]\(([^\s)]*)\)/g;
 const UPLOAD_URL = `${process.env.API_URL}/twitter-upload`;
@@ -175,8 +177,16 @@ const TwitterContent: React.FunctionComponent<
   Props & {
     close: () => void;
     setDialogMessage: (m: string) => void;
+    markInfo: MarkInfo;
   }
-> = ({ close, blockUid, tweetId, setDialogMessage, configUid, markInfo }) => {
+> = ({
+  close,
+  blockUid,
+  tweetId,
+  setDialogMessage,
+  markInfo,
+  extensionAPI,
+}) => {
   const message = useMemo(
     () =>
       getBasicTreeByParentUid(blockUid).map((t) => ({
@@ -198,22 +208,13 @@ const TwitterContent: React.FunctionComponent<
       return;
     }
     const { oauth_token: key, oauth_token_secret: secret } = JSON.parse(oauth);
-    const tree = getBasicTreeByParentUid(configUid);
-    const sentBlockUid = getSettingValueFromTree({
-      tree,
-      key: "sent",
-    })
+    const sentBlockUid = ((extensionAPI.settings.get("sent") as string) || "")
       .replace("((", "")
       .replace("))", "");
-    const sentLabel = getSettingValueFromTree({
-      tree,
-      key: "label",
-      defaultValue: "Sent at {now}",
-    });
-    const appendText = getSettingValueFromTree({
-      tree,
-      key: "append text",
-    });
+    const sentLabel =
+      (extensionAPI.settings.get("label") as string) || "Sent at {now}";
+    const appendText =
+      (extensionAPI.settings.get("append-text") as string) || "";
     const sentBlockIsValid =
       sentBlockUid && !!getEditTimeByBlockUid(sentBlockUid);
     const sourceUid = window.roamAlphaAPI.util.generateUID();
@@ -323,10 +324,8 @@ const TwitterContent: React.FunctionComponent<
       }
     }
     if (success) {
-      const appendParent = getSettingValueFromTree({
-        tree,
-        key: "append parent",
-      });
+      const appendParent =
+        (extensionAPI.settings.get("append-parent") as string) || "";
       if (appendParent) {
         const text = getTextByBlockUid(blockUid);
         updateBlock({
@@ -345,11 +344,8 @@ const TwitterContent: React.FunctionComponent<
     []
   );
   const schedulingEnabled = useMemo(
-    () =>
-      getBasicTreeByParentUid(configUid).some((t) =>
-        toFlexRegex("scheduling").test(t.text)
-      ),
-    [configUid]
+    () => !!extensionAPI.settings.get("scheduling-enabled"),
+    []
   );
   const [showSchedule, setShowSchedule] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -369,7 +365,7 @@ const TwitterContent: React.FunctionComponent<
       return;
     }
     setLoading(true);
-    apiPost("twitter-schedule", {
+    apiPost<{ id: string; status: string }>("twitter-schedule", {
       scheduleDate: scheduleDate.toJSON(),
       payload: JSON.stringify({ blocks: message, tweetId }),
       oauth,
@@ -387,9 +383,9 @@ const TwitterContent: React.FunctionComponent<
           markInfo.pendingBlockUids.add(indexUid);
           setTimeout(
             () =>
-              apiGet(`twitter-schedule?id=${r.data.id}`)
+              apiGet(`twitter-schedule?id=${r.id}`)
                 .then((r) => {
-                  if (r.data.status === "SUCCESS")
+                  if (r.status === "SUCCESS")
                     markInfo.successBlockUids.add(indexUid);
                   else markInfo.failedBlockUids.add(indexUid);
                 })
@@ -506,13 +502,13 @@ const TwitterContent: React.FunctionComponent<
 
 type Props = {
   blockUid: string;
-  configUid: string;
   tweetId?: string;
-  markInfo?: {
-    pendingBlockUids: Set<string>;
-    successBlockUids: Set<string>;
-    failedBlockUids: Set<string>;
-  };
+  extensionAPI: OnloadArgs["extensionAPI"];
+};
+type MarkInfo = {
+  pendingBlockUids: Set<string>;
+  successBlockUids: Set<string>;
+  failedBlockUids: Set<string>;
 };
 
 const TweetOverlay: React.FunctionComponent<
@@ -521,7 +517,7 @@ const TweetOverlay: React.FunctionComponent<
     unmount: () => void;
   } & Props
 > = ({ childrenRef, unmount, ...props }) => {
-  const { tweetId, configUid, markInfo, blockUid } = props;
+  const { blockUid } = props;
   const indexUid = useMemo(() => getFirstChildUidByBlockUid(blockUid), [
     blockUid,
   ]);
@@ -631,6 +627,7 @@ const TweetOverlay: React.FunctionComponent<
     });
     closeDialog();
   }, [closeDialog]);
+  const [markInfo, setMarkInfo] = useState<MarkInfo | null>(null);
   const markIcon = useMemo(
     () =>
       markInfo
@@ -642,8 +639,17 @@ const TweetOverlay: React.FunctionComponent<
           ? "cross"
           : null
         : null,
-    [markInfo, indexUid]
+    [markInfo]
   );
+  useEffect(() => {
+    const listener = ((e: CustomEvent) => {
+      const markInfo = e.detail as MarkInfo;
+      setMarkInfo(markInfo);
+    }) as EventListener;
+    document.body.addEventListener(`roamjs:twitter:mark`, listener);
+    return () =>
+      document.body.removeEventListener(`roamjs:twitter:mark`, listener);
+  }, [indexUid, setMarkInfo]);
   return (
     <>
       <Popover
@@ -694,6 +700,7 @@ const TweetOverlay: React.FunctionComponent<
             {...props}
             close={close}
             setDialogMessage={setDialogMessage}
+            markInfo={markInfo}
           />
         }
         isOpen={isOpen}
