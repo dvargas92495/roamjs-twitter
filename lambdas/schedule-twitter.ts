@@ -366,32 +366,21 @@ export const handler = async () => {
     )
     .then((items) =>
       items.forEach(({ uuid, success, message, email }) =>
-        (success
-          ? meterRoamJSUser(email).catch((e) => {
-              console.error("Failed to meter usage to stripe");
-              console.error(e);
-              return { id: "FAILED" };
-            })
-          : Promise.resolve({ id: "FAILED" })
-        ).then(({ id }) =>
-          dynamo
-            .updateItem({
-              TableName: "RoamJSSocial",
-              Key: { uuid: { S: uuid } },
-              UpdateExpression: "SET #s = :s, #m = :m, #u = :u",
-              ExpressionAttributeNames: {
-                "#s": "status",
-                "#m": "message",
-                "#u": "stripe",
-              },
-              ExpressionAttributeValues: {
-                ":s": { S: success ? "SUCCESS" : "FAILED" },
-                ":m": { S: message },
-                ":u": { S: id },
-              },
-            })
-            .promise()
-        )
+        dynamo
+          .updateItem({
+            TableName: "RoamJSSocial",
+            Key: { uuid: { S: uuid } },
+            UpdateExpression: "SET #s = :s, #m = :m, #u = :u",
+            ExpressionAttributeNames: {
+              "#s": "status",
+              "#m": "message",
+            },
+            ExpressionAttributeValues: {
+              ":s": { S: success ? "SUCCESS" : "FAILED" },
+              ":m": { S: message },
+            },
+          })
+          .promise()
       )
     );
 };

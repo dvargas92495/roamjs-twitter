@@ -1,30 +1,24 @@
 import addStyle from "roamjs-components/dom/addStyle";
 import createButtonObserver from "roamjs-components/dom/createButtonObserver";
 import createHTMLObserver from "roamjs-components/dom/createHTMLObserver";
-import createPageTitleObserver from "roamjs-components/dom/createPageTitleObserver";
 import genericError from "roamjs-components/dom/genericError";
 import getParentUidByBlockUid from "roamjs-components/queries/getParentUidByBlockUid";
 import getUidsFromButton from "roamjs-components/dom/getUidsFromButton";
 import getUids from "roamjs-components/dom/getUids";
-import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
 import getPageTitleByHtmlElement from "roamjs-components/dom/getPageTitleByHtmlElement";
-import parseRoamDateUid from "roamjs-components/date/parseRoamDateUid";
-import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
 import runExtension from "roamjs-components/util/runExtension";
-import isTagOnPage from "roamjs-components/queries/isTagOnPage";
 import { render } from "./TweetOverlay";
 import loadTwitterFeed from "./TwitterFeed";
 import updateBlock from "roamjs-components/writes/updateBlock";
-import getRenderRoot from "roamjs-components/util/getRenderRoot";
 import TwitterLogo from "./TwitterLogo.svg";
 import loadTwitterScheduling from "./ScheduledDashboard";
 import createBlock from "roamjs-components/writes/createBlock";
 import getOrderByBlockUid from "roamjs-components/queries/getOrderByBlockUid";
 import apiGet from "roamjs-components/util/apiGet";
-import getSubTree from "roamjs-components/util/getSubTree";
 import React from "react";
 import OauthPanel from "roamjs-components/components/OauthPanel";
 import apiPost from "roamjs-components/util/apiPost";
+import { addTokenDialogCommand } from "roamjs-components/components/TokenDialog";
 
 const TWITTER_REFERENCES_COMMAND = "twitter-references";
 
@@ -257,5 +251,7 @@ runExtension({
           twitterReferencesListener({}, getUidsFromButton(b).blockUid);
       },
     });
+
+    addTokenDialogCommand();
   },
 });
