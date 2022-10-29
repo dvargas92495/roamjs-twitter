@@ -68,7 +68,8 @@ const twitterReferencesListener = async (
     .catch(genericError);
 };
 
-runExtension({
+export default runExtension({
+  migratedTo: "Twitter",
   run: async (args) => {
     addStyle(`div.roamjs-twitter-count {
       position: relative;
