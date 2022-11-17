@@ -120,7 +120,7 @@ export default runExtension({
                   apiPost({
                     path: `twitter-auth`,
                     data: JSON.parse(data),
-                  }).then((r) => r.data),
+                  }),
                 ServiceIcon: TwitterLogo,
               }),
           },
