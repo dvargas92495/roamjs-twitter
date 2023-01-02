@@ -254,5 +254,10 @@ export default runExtension({
     });
 
     addTokenDialogCommand();
+    if (args.extensionAPI.settings.get("scheduling-enabled"))
+      toggleTwitterScheduling(true);
+    return () => {
+      toggleTwitterScheduling(false);
+    };
   },
 });
