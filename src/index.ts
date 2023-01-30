@@ -205,6 +205,13 @@ export default runExtension({
           description:
             "Whether to mark blocks in your graph with an icon that shows they are already scheduled. Requires refreshing to take effect.",
         },
+        {
+          action: { type: "switch" },
+          id: "parse-tags",
+          name: "Remove Wikilinks",
+          description:
+            "Whether or not to remove wikilinks ([[thisPage]] and #[[thisPage]]) from tweets before sending",
+        },
       ],
     });
 
