@@ -230,6 +230,7 @@ const TwitterContent: React.FunctionComponent<
     let in_reply_to_status_id = tweetId;
     let success = true;
     const links: string[] = [];
+    const regexTags = /(#?\[\[([^\]]*)\]\])/g;
     for (let index = 0; index < message.length; index++) {
       setTweetsSent(index + 1);
       const { text, uid } = message[index];
@@ -239,7 +240,8 @@ const TwitterContent: React.FunctionComponent<
           url.replace("www.dropbox.com", "dl.dropboxusercontent.com")
         );
         return "";
-      });
+      }).replace(!!extensionAPI.settings.get("parse-tags") ? regexTags : /.^/, (match, _, tag) => 
+      tag)
       const media_ids = await uploadAttachments({
         attachmentUrls,
         key,

@@ -1,6 +1,6 @@
 {
   "name": "roamjs-twitter",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Connects your Roam graph to Twitter!",
   "main": "out/index.js",
   "scripts": {

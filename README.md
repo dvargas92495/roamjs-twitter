@@ -104,3 +104,8 @@ By default, the Twitter feed just outputs links to the tweets into the daily not
 In any page, create a `Twitter References` button by typing in `{{twitter references}}` (case-insensitive) in a block. Upon clicking the button, the extension will clear the button and fill the page in with the tweets where you've mentioned that page title. So, if you've tweeted about `books` a lot on twitter, you can head over to the `books` page on roam, and then pull all your tweets about `books`!
 
 One caveat is that this can only pull tweets made in the last 7 days.
+
+## Removing Wikilinks
+The `Remove Wikilinks` button will strip square brackets `[[` and `#` from wikilinked pages.
+
+`[[thisPage]]` and `#[[thisPage]]` will become `thisPage`
